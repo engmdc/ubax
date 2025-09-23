@@ -1,0 +1,134 @@
+<odoo>
+    <record id="view_idil_dashboard_stats_form" model="ir.ui.view">
+        <field name="name">idil.dashboard.stats.form</field>
+        <field name="model">idil.dashboard.stats</field>
+        <field name="arch" type="xml">
+            <form string="IDIL Dashboard" class="o_dashboard">
+                <group col="3" class="o_dashboard_group">
+                    <div class="o_stat_card o_sales">
+                        <span class="o_stat_icon"><i class="fa fa-shopping-cart"/></span>
+                        <span class="o_stat_title">Sales</span>
+                        <span class="o_stat_value"><field name="total_sales"/></span>
+                    </div>
+                    <div class="o_stat_card o_purchases">
+                        <span class="o_stat_icon"><i class="fa fa-credit-card"/></span>
+                        <span class="o_stat_title">Purchases</span>
+                        <span class="o_stat_value"><field name="total_purchases"/></span>
+                    </div>
+                    <div class="o_stat_card o_customers">
+                        <span class="o_stat_icon"><i class="fa fa-users"/></span>
+                        <span class="o_stat_title">Customers</span>
+                        <span class="o_stat_value"><field name="total_customers"/></span>
+                    </div>
+                     <div class="o_stat_card o_sales">
+                        <span class="o_stat_icon"><i class="fa fa-shopping-cart"/></span>
+                        <span class="o_stat_title">Sales</span>
+                        <span class="o_stat_value"><field name="total_sales"/></span>
+                    </div>
+                    <div class="o_stat_card o_purchases">
+                        <span class="o_stat_icon"><i class="fa fa-credit-card"/></span>
+                        <span class="o_stat_title">Purchases</span>
+                        <span class="o_stat_value"><field name="total_purchases"/></span>
+                    </div>
+                    <div class="o_stat_card o_customers">
+                        <span class="o_stat_icon"><i class="fa fa-users"/></span>
+                        <span class="o_stat_title">Customers</span>
+                        <span class="o_stat_value"><field name="total_customers"/></span>
+                    </div>
+                     <div class="o_stat_card o_sales">
+                        <span class="o_stat_icon"><i class="fa fa-shopping-cart"/></span>
+                        <span class="o_stat_title">Sales</span>
+                        <span class="o_stat_value"><field name="total_sales"/></span>
+                    </div>
+                   
+                </group>
+                <style>
+                    .o_dashboard_group {
+                        display: flex;
+                        justify-content: center;
+                        gap: 1px;
+                        margin: 10px 0 0 0;
+                        padding: 0;
+                    }
+                    .o_stat_card {
+                        display: flex;
+                        align-items: center;
+                        border-radius: 16px;
+                        padding: 15px 20px;
+                        min-width: 180px;
+                        max-width: 230px;
+                        min-height: 54px;
+                        box-shadow: 0 4px 12px rgba(60,60,120,0.12);
+                        font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+                        font-size: 16px;
+                        transition: transform 0.13s, box-shadow 0.13s, background 0.15s;
+                        background: #fff;
+                        color: #222;
+                        margin: 0;
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    .o_stat_card.o_sales {
+                        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+                        color: #fff;
+                    }
+                    .o_stat_card.o_purchases {
+                        background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%);
+                        color: #3b3200;
+                    }
+                    .o_stat_card.o_customers {
+                        background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%);
+                        color: #fff;
+                    }
+                    .o_stat_card:hover {
+                        transform: translateY(-3px) scale(1.035);
+                        box-shadow: 0 9px 18px rgba(60,60,120,0.17);
+                    }
+                    .o_stat_icon {
+                        font-size: 34px;
+                        margin-right: 15px;
+                        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.09));
+                    }
+                    .o_stat_title {
+                        font-size: 15px;
+                        letter-spacing: 1px;
+                        font-weight: 600;
+                        opacity: 0.93;
+                        text-shadow: 0 1px 1px rgba(0,0,0,0.08);
+                        margin-bottom: 0;
+                    }
+                    .o_stat_value {
+                        font-size: 22px;
+                        font-weight: 800;
+                        text-shadow: 0 1px 2px rgba(0,0,0,0.07);
+                        margin-left: 10px;
+                    }
+                    .o_stat_card span {
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                    }
+                    @media (max-width: 900px) {
+                        .o_dashboard_group {
+                            flex-direction: column;
+                            align-items: center;
+                            gap: 10px;
+                        }
+                        .o_stat_card {
+                            min-width: 140px;
+                            max-width: 96vw;
+                        }
+                    }
+                </style>
+            </form>
+        </field>
+    </record>
+    <record id="action_idil_dashboard_stats" model="ir.actions.act_window">
+        <field name="name">Dashboard</field>
+        <field name="res_model">idil.dashboard.stats</field>
+        <field name="view_mode">form</field>
+        <field name="target">main</field>
+        <field name="view_id" ref="view_idil_dashboard_stats_form"/>
+        <field name="context">{}</field>
+    </record>
+</odoo>

@@ -1,0 +1,73 @@
+<odoo>
+  <record id="view_item_opening_balance_form" model="ir.ui.view">
+    <field name="name">idil.item.opening.balance.form</field>
+    <field name="model">idil.item.opening.balance</field>
+    <field name="arch" type="xml">
+      <form string="Opening Balance">
+      <header>
+        <button name="action_populate_zero_qty_items"
+          type="object"
+          string="Populate Zero Qty Items"
+          class="btn-primary"/>
+
+      </header>
+        <sheet>
+          <div class="oe_title">
+            <h1>
+              <field name="name" readonly="1"/>
+            </h1>
+          </div>
+
+          <group>
+            <group>
+              <field name="date"/>
+              <field name="state" readonly="1"/>
+                <field name="currency_id"/>
+              <field name="rate" readonly="1"/>
+            </group>
+            <group>
+              <field name="note" placeholder="Internal note or remarks about this opening balance..."/>
+            </group>
+          </group>
+
+          <notebook>
+            <page string="Opening Balance Items">
+              <field name="line_ids">
+                <tree editable="bottom" style="width: 100%;">
+                  <field name="item_id" />
+                  <field name="quantity" />
+                  <field name="cost_price" readonly="1"/>
+                  <field name="total" sum="total" readonly="1"/>
+                </tree>
+              </field>
+            </page>
+          </notebook>
+
+           
+        </sheet>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_item_opening_balance_tree" model="ir.ui.view">
+    <field name="name">idil.item.opening.balance.tree</field>
+    <field name="model">idil.item.opening.balance</field>
+    <field name="arch" type="xml">
+      <tree>
+          <field name="company_id"/>
+          <field name="name"/>
+          <field name="currency_id"/>
+          <field name="rate"/>
+          <field name="total_amount" sum="Total Amount"/>
+          <field name="date"/>
+          <field name="state"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="action_item_opening_balance" model="ir.actions.act_window">
+    <field name="name">Opening Balances</field>
+    <field name="res_model">idil.item.opening.balance</field>
+    <field name="view_mode">tree,form</field>
+  </record>
+</odoo>
