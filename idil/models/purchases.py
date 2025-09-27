@@ -410,7 +410,7 @@ class PurchaseOrder(models.Model):
             }
         )
 
-        # Now create booking lines
+        # Now create booking lines d
         for line in self.order_lines:
             # Fallback to company currency if not explicitly set
             # Validate currency consistency
