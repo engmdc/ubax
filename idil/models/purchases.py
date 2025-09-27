@@ -406,7 +406,7 @@ class PurchaseOrder(models.Model):
                     0 if self.payment_method == "cash" else total_amount
                 ),
                 "amount_paid": total_amount if self.payment_method == "cash" else 0,
-                "rate": self.rate,  # Add rate field
+                "rate": self.rate,  # Add rate field s
             }
         )
 
