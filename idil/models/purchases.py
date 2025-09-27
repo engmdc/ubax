@@ -150,6 +150,17 @@ class PurchaseOrder(models.Model):
     _description = "Purchase Order Lines"
     _order = "id desc"
 
+    # 👇 new field for multi-company
+    company_id = fields.Many2one(
+        "res.company",
+        string="Company",
+        required=True,
+        default=lambda self: self.env.company,
+        domain=lambda self: [
+            ("id", "in", self.env.companies.ids)
+        ],  # only allowed companies
+        index=True,
+    )
     reffno = fields.Char(string="Reference Number")  # Consider renaming for clarity
     vendor_id = fields.Many2one(
         "idil.vendor.registration", string="Vendor", required=True
@@ -183,6 +194,50 @@ class PurchaseOrder(models.Model):
     amount = fields.Float(
         string="Total Price", compute="_compute_total_amount", store=True, readonly=True
     )
+    # Currency fields
+    currency_id = fields.Many2one(
+        "res.currency",
+        string="Currency",
+        required=True,
+        default=lambda self: self.env["res.currency"].search(
+            [("name", "=", "SL")], limit=1
+        ),
+        readonly=True,
+    )
+    rate = fields.Float(
+        string="Exchange Rate",
+        compute="_compute_exchange_rate",
+        store=True,
+        readonly=True,
+    )
+
+    @api.depends("currency_id", "purchase_date", "company_id")
+    def _compute_exchange_rate(self):
+        Rate = self.env["res.currency.rate"].sudo()
+        for order in self:
+            order.rate = 0.0
+            if not order.currency_id:
+                continue
+
+            # Use the order's date; fallback to today if missing
+            doc_date = (
+                fields.Date.to_date(order.purchase_date)
+                if order.purchase_date
+                else fields.Date.today()
+            )
+
+            # Get latest rate on or before the doc_date, preferring the order's company, then global (company_id False)
+            rate_rec = Rate.search(
+                [
+                    ("currency_id", "=", order.currency_id.id),
+                    ("name", "<=", doc_date),
+                    ("company_id", "in", [order.company_id.id, False]),
+                ],
+                order="company_id desc, name desc",
+                limit=1,
+            )
+
+            order.rate = rate_rec.rate or 0.0
 
     def _create_item_movements(self):
         for order in self:
@@ -351,6 +406,7 @@ class PurchaseOrder(models.Model):
                     0 if self.payment_method == "cash" else total_amount
                 ),
                 "amount_paid": total_amount if self.payment_method == "cash" else 0,
+                "rate": self.rate,
             }
         )
 

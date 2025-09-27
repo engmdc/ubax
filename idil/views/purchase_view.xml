@@ -6,10 +6,13 @@
         <field name="model">idil.purchase_order</field>
         <field name="arch" type="xml">
             <tree>
+                <field name="company_id"/>
                 <field name="reffno" string="Reff No#" readonly="1"/>
                 <field name="vendor_id"/>
                 <field name="payment_method" string="Reff No#" readonly="1"/>
                 <field name="account_number"/>
+                <field name="currency_id"/>
+                <field name="rate"/>
                 <field name="amount" sum="Total"/>
                 <field name="order_lines"/>
 
@@ -33,6 +36,7 @@
                         <page string="Vendor Information">
                             <row>
                                 <group class="oe_inline">
+                                     <field name="company_id"/>
                                     <field name="vendor_id"/>
                                 </group>
 
@@ -57,6 +61,8 @@
 
                             </row>
                             <group class="oe_inline">
+                                <field name="currency_id"/>
+                                 <field name="rate"/>
                                 <field name="description"/>
                             </group>
 
