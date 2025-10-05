@@ -14,7 +14,6 @@ class ManufacturingOrder(models.Model):
     _name = "idil.manufacturing.order"
     _description = "Manufacturing Order"
     _inherit = ["mail.thread", "mail.activity.mixin"]
-    _order = "id desc"
 
     company_id = fields.Many2one(
         "res.company", default=lambda s: s.env.company, required=True

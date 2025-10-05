@@ -97,6 +97,7 @@
                    <group>
                         <group>
                             <field name="order_date"/>
+                            
                             <field name="commission_amount"/>
                             <field name="currency_id"/>
                             <field name="rate"/>
@@ -123,15 +124,16 @@
 
                                     <field name="quantity_diff" readonly="1"
                                            help="This field automatically calculates and displays the variance between the planned (Demand) and the actual quantity used. A positive value indicates a surplus in the planned quantity, while a negative value suggests a shortfall."/>
-                                    <field name="discount_quantity"/>
+                                    <field name="discount_quantity" readonly="1"/>
                                     <field name="returned_quantity" readonly="1"/>
 
-
+                                    <field name="currency_id" readonly="1"/>
                                     <field name="price_unit"/>
 
                                     <field name="discount_amount" sum="Total" readonly="1"/>
-
-                                    <field name="commission_amount" sum="Total"/>
+                                    
+                                    <field name="commission"/>
+                                    <field name="commission_amount" sum="Total" readonly="1"/>
 
                                     <field name="subtotal" sum="Total" readonly="1"/>
 

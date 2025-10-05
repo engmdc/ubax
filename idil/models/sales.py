@@ -14,7 +14,6 @@ class SaleOrder(models.Model):
     _name = "idil.sale.order"
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _description = "Sale Order"
-    _order = "id desc"
 
     company_id = fields.Many2one(
         "res.company", default=lambda s: s.env.company, required=True
@@ -864,7 +863,6 @@ class SaleOrderLine(models.Model):
     _name = "idil.sale.order.line"
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _description = "Sale Order Line"
-    _order = "id desc"
     _sql_constraints = [
         ("qty_positive", "CHECK(quantity > 0)", "Quantity must be positive."),
     ]
@@ -884,14 +882,18 @@ class SaleOrderLine(models.Model):
 
     product_id = fields.Many2one("my_product.product", string="Product")
     quantity_Demand = fields.Float(string="Demand", default=1.0)
-    quantity = fields.Float(string="Quantity Used", required=True, tracking=True)
+    quantity = fields.Float(string="QTY Used", required=True, tracking=True)
     quantity_diff = fields.Float(
-        string="Quantity Difference", compute="_compute_quantity_diff", store=True
+        string="QTY Diff", compute="_compute_quantity_diff", store=True
     )
 
     price_unit = fields.Float(
         string="Unit Price",
         default=lambda self: self.product_id.sale_price if self.product_id else 0.0,
+    )
+    commission = fields.Float(
+        string="Commission %",
+        default=lambda self: self.product_id.commission if self.product_id else 0.0,
     )
     # discount_amount = fields.Float(
     #     string="Discount Amount", compute="_compute_discount_amount", store=True
@@ -946,7 +948,7 @@ class SaleOrderLine(models.Model):
             else:
                 line.returned_quantity = 0.0
 
-    @api.depends("quantity", "product_id.commission", "price_unit")
+    @api.depends("quantity", "product_id.commission", "price_unit", "commission")
     def _compute_commission_amount(self):
         for line in self:
             product = line.product_id
@@ -964,7 +966,7 @@ class SaleOrderLine(models.Model):
 
                 line.commission_amount = (
                     (line.quantity - line.discount_quantity)
-                    * product.commission
+                    * line.commission
                     * line.price_unit
                 )
             else:

@@ -65,3 +65,4 @@ from . import product_purchase_return
 from . import system_clearing
 from . import report_customer_sales
 from . import model_export_wizard
+from . import report_production_summary

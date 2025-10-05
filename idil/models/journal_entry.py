@@ -8,6 +8,9 @@ class JournalEntry(models.Model):
     _description = "Journal Entry"
     _order = "id desc"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
     name = fields.Char(
         string="Journal no",
         required=True,
@@ -39,6 +42,50 @@ class JournalEntry(models.Model):
         "idil.vendor.registration", string="Vendor", ondelete="restrict"
     )
     customer_id = fields.Many2one("idil.customer.registration", string="Customer")
+
+    rate = fields.Float(
+        string="Exchange Rate",
+        compute="_compute_exchange_rate",
+        store=True,
+        readonly=True,
+        tracking=True,
+    )
+    # 🆕 Add state field
+    state = fields.Selection(
+        [
+            ("draft", "Draft"),
+            ("pending", "Pending"),
+            ("confirmed", "Confirmed"),
+            ("cancel", "Cancelled"),
+        ],
+        string="Status",
+        default="confirmed",
+        tracking=True,
+    )
+
+    @api.depends("currency_id", "date", "company_id")
+    def _compute_exchange_rate(self):
+        Rate = self.env["res.currency.rate"].sudo()
+        for order in self:
+            order.rate = 0.0
+            if not order.currency_id:
+                continue
+
+            doc_date = (
+                fields.Date.to_date(order.date) if order.date else fields.Date.today()
+            )
+
+            rate_rec = Rate.search(
+                [
+                    ("currency_id", "=", order.currency_id.id),
+                    ("name", "<=", doc_date),
+                    ("company_id", "in", [order.company_id.id, False]),
+                ],
+                order="company_id desc, name desc",
+                limit=1,
+            )
+
+            order.rate = rate_rec.rate or 0.0
 
     @api.constrains("vendor_id", "customer_id")
     def _check_vendor_or_customer(self):
@@ -195,6 +242,7 @@ class JournalEntry(models.Model):
                         "credit_total": entry.total_credit,
                         "payment_method": "other",
                         "payment_status": "paid",
+                        "rate": entry.rate,
                         "trx_source_id": trx_source_id,
                         "journal_entry_id": entry.id,  # Link to the journal entry
                     }

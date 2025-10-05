@@ -124,7 +124,7 @@ class SalesSummaryPersonReportWizard(models.TransientModel):
 
         # Main data query
         self.env.cr.execute(
-            """
+            """ 
             SELECT DATE(so.order_date),  
                     p.name, 
                     sol.quantity, 
@@ -134,8 +134,8 @@ class SalesSummaryPersonReportWizard(models.TransientModel):
                 (COALESCE(sol.quantity, 0) - (((COALESCE(sol.quantity, 0)) - (COALESCE(srl.returned_quantity, 0)) )* (p.discount /100))  - COALESCE(srl.returned_quantity, 0)) AS net,
                 COALESCE(sol.price_unit, 0), 
                 ((COALESCE(sol.quantity, 0) - (((COALESCE(sol.quantity, 0)) - (COALESCE(srl.returned_quantity, 0)) )* (p.discount /100)) - COALESCE(srl.returned_quantity, 0)) * COALESCE(sol.price_unit, 0)) AS lacag,
-                (COALESCE(p.commission, 0) * 100),
-                (((COALESCE(sol.quantity, 0) - (((COALESCE(sol.quantity, 0)) - (COALESCE(srl.returned_quantity, 0)) )* (p.discount /100)) - COALESCE(srl.returned_quantity, 0)) * COALESCE(sol.price_unit, 0)) * COALESCE(p.commission, 0)),
+                (COALESCE(sol.commission, 0) * 100),
+                (((COALESCE(sol.quantity, 0) - (((COALESCE(sol.quantity, 0)) - (COALESCE(srl.returned_quantity, 0)) )* (p.discount /100)) - COALESCE(srl.returned_quantity, 0)) * COALESCE(sol.price_unit, 0)) * COALESCE(sol.commission, 0)),
                 DATE(src.receipt_date), 
                 COALESCE(src.paid_amount, 0)
             FROM public.idil_sales_sales_personnel sp

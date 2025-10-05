@@ -8,10 +8,14 @@
         <form string="Product Purchase Order">
             <sheet>
                 <group>
+
                     <field name="name" readonly="1"/>
                     <field name="vendor_id"/>
                     <field name="invoice_number"/>
-                    <field name="purchase_date"/>                               
+                    <field name="purchase_date"/>   
+                    <field name="currency_id"/>    
+                    <field name="rate"/>     
+                                               
                     <field name="payment_method"/>
                     <field name="account_number"/>                 
                     <field name="amount" readonly="1"/>

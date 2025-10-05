@@ -13,6 +13,9 @@ class SalesOpeningBalance(models.Model):
     _description = "Sales Team Opening Balance"
     _order = "id desc"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
     name = fields.Char(string="Reference", default="New", readonly=True, copy=False)
     date = fields.Date(
         string="Opening Date", default=fields.Date.context_today, required=True

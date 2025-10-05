@@ -1,110 +1,159 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
 
+    <!-- ========================= -->
+    <!-- Tree (List) View          -->
+    <!-- ========================= -->
     <record id="view_purchase_order_tree" model="ir.ui.view">
-        <field name="name">purchase.order.tree</field>
+        <field name="name">idil.purchase_order.tree</field>
         <field name="model">idil.purchase_order</field>
         <field name="arch" type="xml">
-            <tree>
-                <field name="company_id"/>
-                <field name="reffno" string="Reff No#" readonly="1"/>
-                <field name="vendor_id"/>
-                <field name="payment_method" string="Reff No#" readonly="1"/>
-                <field name="account_number"/>
-                <field name="currency_id"/>
-                <field name="rate"/>
-                <field name="amount" sum="Total"/>
-                <field name="order_lines"/>
+            <tree string="Purchase Orders" decoration-info="state in ('draft','pending')" decoration-success="state == 'confirmed'" decoration-danger="state == 'cancel'">
+                <field name="reffno" string="Ref No." readonly="1" class="o_td_center" />
+                <field name="vendor_id" />
+                <field name="payment_method" string="Payment Method" class="o_td_center"/>
+                <field name="account_number" class="o_td_center"/>
+                <!-- Show monetary properly; if your model has currency_id, this will format amounts -->
+                <field name="amount" sum="Total" widget="monetary" options="{'currency_field': 'currency_id'}" class="o_td_right"/>
+                <!-- Compact preview of lines count for quick scan -->
+                <field name="order_lines" string="Items" widget="one2many_count" class="o_td_center"/>
+                <field name="purchase_date" class="o_td_center"/>
+                 <field name="state"/>
 
-                <!-- Add other fields here as needed -->
             </tree>
         </field>
     </record>
 
-    <record id="idil_view_purchase_order_form" model="ir.ui.view">
-        <field name="name">purchase.order.form</field>
+    <!-- ========================= -->
+    <!-- Search View               -->
+    <!-- ========================= -->
+    <record id="view_purchase_order_search" model="ir.ui.view">
+        <field name="name">idil.purchase_order.search</field>
         <field name="model">idil.purchase_order</field>
         <field name="arch" type="xml">
-            <form>
+            <search string="Search Purchase Orders">
+                <field name="reffno" string="Reference"/>
+                <field name="vendor_id"/>
+                <field name="payment_method"/>
+                <field name="account_number"/>
+                <field name="purchase_date"/>
+
+                <filter name="today" string="Today" domain="[('purchase_date', '=', context_today().strftime('%%Y-%%m-%%d'))]"/>
+                <filter name="this_week" string="This Week" domain="[('purchase_date','&gt;=', (context_today() - datetime.timedelta(days=context_today().weekday())).strftime('%%Y-%%m-%%d'))]"/>
+                <separator/>
+                <filter name="draft" string="Draft/Pending" domain="[('state','in',('draft','pending'))]"/>
+                <filter name="confirmed" string="Confirmed" domain="[('state','=','confirmed')]"/>
+                <filter name="cancel" string="Cancelled" domain="[('state','=','cancel')]"/>
+
+                <group expand="0" string="Group By">
+                    <filter name="group_vendor" string="Vendor" context="{'group_by':'vendor_id'}"/>
+                    <filter name="group_payment" string="Payment Method" context="{'group_by':'payment_method'}"/>
+                    <filter name="group_date" string="Purchase Date" context="{'group_by':'purchase_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ========================= -->
+    <!-- Form View                 --> 
+    <!-- ========================= -->
+    <record id="idil_view_purchase_order_form" model="ir.ui.view">
+        <field name="name">idil.purchase_order.form</field>
+        <field name="model">idil.purchase_order</field>
+        <field name="arch" type="xml">
+            <form string="Purchase Order" class="o_form_full o_form_nosheet">
+                <!-- Header Bar -->
+                <header>
+                    <!-- If you have 'state' selection on the model, statusbar looks great -->
+                    <field name="state" widget="statusbar" statusbar_visible="draft,pending,confirmed,cancel" optional="show"/>
+
+                    <!-- Action Buttons (guard with attrs if needed) -->
+                    <!-- <button name="action_confirm" type="object" string="Confirm" class="btn-primary"
+                            attrs="{'invisible': [('state','not in',('draft','pending'))]}"/>
+                    <button name="action_set_pending" type="object" string="Set Pending"
+                            attrs="{'invisible': [('state','!=','draft')]}"/>
+                    <button name="action_cancel" type="object" string="Cancel" class="btn-secondary"
+                            attrs="{'invisible': [('state','in',('cancel','confirmed'))]}"/>
+                    <button name="action_reset_to_draft" type="object" string="Reset to Draft" class="btn-secondary"
+                            attrs="{'invisible': [('state','!=','cancel')]}"/> -->
+                </header>
+
                 <sheet>
+              
+                    <!-- Primary: Reference + Vendor & Dates -->
                     <group>
-                        <field name="reffno" string="Reff No#" readonly="1"/>
+
+                        <group>
+                            <field name="reffno" string="Reference No." readonly="1"/>
+                            <field name="vendor_id" options="{'no_create_edit': True}"/>
+                            <field name="invoice_number"/>
+                        </group>
+
+                        <group>
+                            <field name="purchase_date"/>
+                            <field name="currency_id"/>
+                            <!-- If you use rate only when currency != company currency, you can hide conditionally -->
+                            <field name="rate"  
+                                   help="Exchange rate applied to this purchase"/>
+                        </group>
+                        
                     </group>
+
+                    <!-- Payment Information in a clean row -->
+                    <group string="Payment Information">
+                        <field name="payment_method" string="Payment Method"/>
+                        <field name="account_number"/>
+                        <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                        <field name="description" placeholder="Add a short description..."/>
+                    </group>
+
                     <notebook>
+                        <!-- Items Page -->
+                        <page string="Items">
+                            <field name="order_lines" widget="one2many_list"
+                                   options="{
+                                        'no_open': False,
+                                        'no_create_edit': False,
+                                        'reload_on_button': true,
+                                        'create_edit': true
+                                   }">
+                                <tree editable="bottom" string="Items">
+                                    <field name="item_id" widget="many2one_tags"
+                                           options="{'no_create': True}" string="Item" />
+                                    <field name="quantity" class="o_td_center"/>
+                                    <field name="cost_price" string="Unit Cost" class="o_td_right"
+                                           digits="[16, 5]"/>
+                                    <field name="amount" string="Total"
+                                           widget="monetary" options="{'currency_field': 'currency_id'}"
+                                           readonly="1" class="o_td_right" sum="Total"/>
+                                    <field name="expiration_date" class="o_td_center"/>
+                                </tree>
 
-
-                        <page string="Vendor Information">
-                            <row>
-                                <group class="oe_inline">
-                                     <field name="company_id"/>
-                                    <field name="vendor_id"/>
-                                </group>
-
-                                <group class="oe_inline">
-                                    <field name="invoice_number"/>
-                                </group>
-                                <group class="oe_inline">
-                                    <field name="purchase_date"/>
-                                </group>
-
-
-
-
-                                <group class="oe_inline">
-                                    <field name="payment_method"/>
-                                </group>
-
-                                <group class="oe_inline">
-                                    <field name="account_number"/>
-                                </group>
-
-
-                            </row>
-                            <group class="oe_inline">
-                                <field name="currency_id"/>
-                                 <field name="rate"/>
-                                <field name="description"/>
-                            </group>
-
-                            <group string="Item Information">
-                                <!-- Enhance the display of items -->
-                                <field name="order_lines" widget="one2many_list" options="{'no_delete': True}">
-
-                                    <tree>
-                                        <field name="item_id" widget="many2one_tags"
-                                               options="{'no_create': True, 'style': 'text-align:center'}"
-                                               string="Item"/>
-                                        <field name="quantity" string="Quantity"
-                                               options="{'style': 'text-align:center'}"/>
-                                        <field name="amount" string="Total Price" sum="total" readonly="1"
-                                               options="{'style': 'text-align:center'}"/>
-                                        <field name="expiration_date" string="Expiration Date"
-                                               options="{'style': 'text-align:center'}"/>
-                                        <!-- Add more fields as needed -->
-                                    </tree>
-                                    <form>
-                                        <group string="Item Information">
-                                            <field name="item_id"/>
+                                <form string="Item">
+                                    <group>
+                                        <group>
+                                            <field name="item_id" options="{'no_create': True}"/>
                                             <field name="quantity"/>
-                                            <field name="cost_price"/>
-                                            
-                                            <field name="amount" readonly="1"/>
-                                            <field name="expiration_date"/>
-
+                                            <field name="cost_price" digits="[16,5]"/>
                                         </group>
-
-
-                                        <div class="oe_chatter">
-                                            <field name="message_follower_ids"/>
-                                            <field name="message_ids"/>
-                                            <field name="activity_ids"/>
-                                        </div>
-                                    </form>
-                                </field>
-                            </group>
+                                        <group>
+                                            <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                            <field name="expiration_date"/>
+                                        </group>
+                                    </group>
+                                </form>
+                            </field>
                         </page>
                     </notebook>
+                        <!-- Optional: Notes / Attachments -->
+                         <group>
+
+                            <field name="description" placeholder="Internal notes..." nolabel="1"/>
+                        </group>
+                   
                 </sheet>
+
+                <!-- Chatter -->
                 <div class="oe_chatter">
                     <field name="message_follower_ids"/>
                     <field name="message_ids"/>
@@ -114,19 +163,22 @@
         </field>
     </record>
 
+    <!-- ========================= -->
+    <!-- Action                    -->
+    <!-- ========================= -->
     <record id="action_purchase_order" model="ir.actions.act_window">
         <field name="name">Purchase Orders</field>
         <field name="type">ir.actions.act_window</field>
         <field name="res_model">idil.purchase_order</field>
         <field name="view_mode">tree,form</field>
-        <field name="view_id" ref="view_purchase_order_tree"/>  <!-- Set the view_id to the tree view -->
+        <field name="view_id" ref="view_purchase_order_tree"/>
+        <field name="search_view_id" ref="view_purchase_order_search"/>
         <field name="context">{}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Create Your First Purchase Orders
+                Create your first Purchase Order
             </p>
         </field>
     </record>
-
 
 </odoo>

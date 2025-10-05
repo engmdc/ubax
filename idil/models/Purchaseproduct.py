@@ -9,6 +9,9 @@ class ProductPurchaseOrder(models.Model):
     _description = "Product Purchase Order"
     _order = "id desc"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
     name = fields.Char(string="Reference", readonly=True, default="New")
     vendor_id = fields.Many2one(
         "idil.vendor.registration", string="Vendor", required=True
@@ -41,6 +44,63 @@ class ProductPurchaseOrder(models.Model):
         string="Account Number",
         domain="[('account_type', '=', payment_method)]",
     )
+    # Currency fields
+    currency_id = fields.Many2one(
+        "res.currency",
+        string="Currency",
+        required=True,
+        default=lambda self: self.env["res.currency"].search(
+            [("name", "=", "SL")], limit=1
+        ),
+        readonly=True,
+        tracking=True,
+    )
+
+    rate = fields.Float(
+        string="Exchange Rate",
+        compute="_compute_exchange_rate",
+        store=True,
+        readonly=True,
+        tracking=True,
+    )
+    # 🆕 Add state field
+    state = fields.Selection(
+        [
+            ("draft", "Draft"),
+            ("pending", "Pending"),
+            ("confirmed", "Confirmed"),
+            ("cancel", "Cancelled"),
+        ],
+        string="Status",
+        default="confirmed",
+        tracking=True,
+    )
+
+    @api.depends("currency_id", "purchase_date", "company_id")
+    def _compute_exchange_rate(self):
+        Rate = self.env["res.currency.rate"].sudo()
+        for order in self:
+            order.rate = 0.0
+            if not order.currency_id:
+                continue
+
+            doc_date = (
+                fields.Date.to_date(order.purchase_date)
+                if order.purchase_date
+                else fields.Date.today()
+            )
+
+            rate_rec = Rate.search(
+                [
+                    ("currency_id", "=", order.currency_id.id),
+                    ("name", "<=", doc_date),
+                    ("company_id", "in", [order.company_id.id, False]),
+                ],
+                order="company_id desc, name desc",
+                limit=1,
+            )
+
+            order.rate = rate_rec.rate or 0.0
 
     @api.depends("order_lines.amount")
     def _compute_total_amount(self):
@@ -251,6 +311,7 @@ class ProductPurchaseOrderLine(models.Model):
                             "trx_source_id": trx_source.id,
                             "vendor_id": order.vendor_id.id,
                             "payment_method": order.payment_method,
+                            "rate": order.rate,
                             "trx_date": order.purchase_date,
                             "amount": line.amount,
                             "amount_paid": (

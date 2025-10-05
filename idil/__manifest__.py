@@ -1,14 +1,14 @@
 {
-    "name": "Ubax",
+    "name": "idil",
     "version": "1.0.0",
-    "category": "Ubax",
+    "category": "Idil",
     "license": "LGPL-3",
-    "summary": "Ubax Management System",
+    "summary": "Idil Management System",
     "description": "Mohamed",
     "depends": ["mail", "point_of_sale", "web"],
     "application": True,
     "sequence": -100,
-    "author": "MDCs",
+    "author": "again",
     "assets": {
         "web.assets_common": [
             # 'idil/static/src/scss/primary_variables.scss',
@@ -116,6 +116,7 @@
         "views/system_clearing_wizard_view.xml",
         "views/customer_sales_report_views.xml",
         "views/model_export_wizard.xml",
+        "views/reports_manafure_views.xml",
         "views/menu_hr.xml",
         "views/menu.xml",
     ],

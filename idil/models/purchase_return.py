@@ -9,6 +9,10 @@ class PurchaseReturn(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "id desc"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
+
     name = fields.Char(
         string="Return Reference",
         required=True,
@@ -34,9 +38,18 @@ class PurchaseReturn(models.Model):
     return_lines = fields.One2many(
         "idil.purchase_return.line", "return_id", string="Return Lines"
     )
+
+    # 🆕 Add state field
     state = fields.Selection(
-        [("draft", "Draft"), ("confirmed", "Confirmed"), ("cancel", "Cancelled")],
+        [
+            ("draft", "Draft"),
+            ("pending", "Pending"),
+            ("confirmed", "Confirmed"),
+            ("cancel", "Cancelled"),
+        ],
+        string="Status",
         default="draft",
+        tracking=True,
     )
 
     @api.model

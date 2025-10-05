@@ -12,17 +12,15 @@ class IdilStaffSales(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "id desc"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
     name = fields.Char(string="Reference", readonly=True, default="New", tracking=True)
     employee_id = fields.Many2one(
         "idil.employee", string="Staff", required=True, tracking=True
     )
-    company_id = fields.Many2one(
-        related="employee_id.company_id", store=True, readonly=True
-    )
+    sales_date = fields.Datetime(string="Order Date", default=fields.Datetime.now)
 
-    sales_date = fields.Date(
-        string="Date", default=fields.Date.context_today, tracking=True
-    )
     line_ids = fields.One2many("idil.staff.sales.line", "sales_id", string="Products")
     currency_id = fields.Many2one(related="employee_id.currency_id", readonly=True)
 
@@ -38,6 +36,7 @@ class IdilStaffSales(models.Model):
         default="draft",
         tracking=True,
     )
+    # Currency fields
     currency_id = fields.Many2one(
         "res.currency",
         string="Currency",
@@ -46,12 +45,15 @@ class IdilStaffSales(models.Model):
             [("name", "=", "SL")], limit=1
         ),
         readonly=True,
+        tracking=True,
     )
+
     rate = fields.Float(
         string="Exchange Rate",
         compute="_compute_exchange_rate",
         store=True,
         readonly=True,
+        tracking=True,
     )
     # Add payment status field
     payment_status = fields.Selection(
@@ -64,21 +66,31 @@ class IdilStaffSales(models.Model):
         tracking=True,
     )
 
-    @api.depends("currency_id")
+    @api.depends("currency_id", "sales_date", "company_id")
     def _compute_exchange_rate(self):
+        Rate = self.env["res.currency.rate"].sudo()
         for order in self:
-            if order.currency_id:
-                rate = self.env["res.currency.rate"].search(
-                    [
-                        ("currency_id", "=", order.currency_id.id),
-                        ("name", "=", fields.Date.today()),
-                        ("company_id", "=", self.env.company.id),
-                    ],
-                    limit=1,
-                )
-                order.rate = rate.rate if rate else 0.0
-            else:
-                order.rate = 0.0
+            order.rate = 0.0
+            if not order.currency_id:
+                continue
+
+            doc_date = (
+                fields.Date.to_date(order.sales_date)
+                if order.sales_date
+                else fields.Date.today()
+            )
+
+            rate_rec = Rate.search(
+                [
+                    ("currency_id", "=", order.currency_id.id),
+                    ("name", "<=", doc_date),
+                    ("company_id", "in", [order.company_id.id, False]),
+                ],
+                order="company_id desc, name desc",
+                limit=1,
+            )
+
+            order.rate = rate_rec.rate or 0.0
 
     @api.depends("line_ids.total")
     def _compute_total_amount(self):
@@ -122,6 +134,7 @@ class IdilStaffSales(models.Model):
                             "payment_method": "cash",
                             "payment_status": "pending",
                             "staff_sales_id": rec.id,
+                            "rate": rec.rate,
                         }
                     )
 
@@ -468,6 +481,14 @@ class IdilStaffSalesLine(models.Model):
         "idil.staff.sales", string="Staff Sale", required=True, ondelete="cascade"
     )
     product_id = fields.Many2one("my_product.product", string="Product", required=True)
+    # 🔧 NEW: give Monetary fields a currency on the line
+    currency_id = fields.Many2one(
+        "res.currency",
+        related="sales_id.currency_id",
+        store=True,
+        readonly=True,
+        string="Currency",
+    )
     quantity = fields.Float(string="Quantity", required=True, default=1.0)
     price_unit = fields.Float(
         string="Unit Price",

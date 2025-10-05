@@ -193,7 +193,7 @@ class Product(models.Model):
         default=lambda self: self.env["res.currency"].search(
             [("name", "=", "SL")], limit=1
         ),
-        readonly=True, 
+        readonly=True,
     )
 
     rate = fields.Float(

@@ -10,6 +10,9 @@ class ProductAdjustment(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "id desc"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
     product_id = fields.Many2one("my_product.product", string="Product", required=True)
     adjustment_date = fields.Datetime(
         string="Adjustment Date", default=fields.Datetime.now, required=True
@@ -41,7 +44,6 @@ class ProductAdjustment(models.Model):
         required=True,
     )
     source_document = fields.Char(string="Source Document")
-    company_id = fields.Many2one("res.company", default=lambda self: self.env.company)
     currency_id = fields.Many2one(
         "res.currency",
         string="Currency",
@@ -58,21 +60,31 @@ class ProductAdjustment(models.Model):
         readonly=True,
     )
 
-    @api.depends("currency_id")
+    @api.depends("currency_id", "adjustment_date", "company_id")
     def _compute_exchange_rate(self):
+        Rate = self.env["res.currency.rate"].sudo()
         for order in self:
-            if order.currency_id:
-                rate = self.env["res.currency.rate"].search(
-                    [
-                        ("currency_id", "=", order.currency_id.id),
-                        ("name", "=", fields.Date.today()),
-                        ("company_id", "=", self.env.company.id),
-                    ],
-                    limit=1,
-                )
-                order.rate = rate.rate if rate else 0.0
-            else:
-                order.rate = 0.0
+            order.rate = 0.0
+            if not order.currency_id:
+                continue
+
+            doc_date = (
+                fields.Date.to_date(order.adjustment_date)
+                if order.adjustment_date
+                else fields.Date.today()
+            )
+
+            rate_rec = Rate.search(
+                [
+                    ("currency_id", "=", order.currency_id.id),
+                    ("name", "<=", doc_date),
+                    ("company_id", "in", [order.company_id.id, False]),
+                ],
+                order="company_id desc, name desc",
+                limit=1,
+            )
+
+            order.rate = rate_rec.rate or 0.0
 
     @api.onchange("product_id")
     def _onchange_product_id(self):
@@ -180,6 +192,7 @@ class ProductAdjustment(models.Model):
                             "payment_method": "other",
                             "adjustment_id": rec.id,
                             "payment_status": "paid",
+                            "rate": rec.rate,
                             "trx_date": rec.adjustment_date,
                             "amount": rec.adjustment_amount,
                         }

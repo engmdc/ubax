@@ -12,7 +12,6 @@ class PurchaseOrderLine(models.Model):
     _name = "idil.purchase_order.line"
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _description = "Purchase Order"
-    _order = "id desc"
 
     order_id = fields.Many2one(
         "idil.purchase_order", string="Order", ondelete="cascade"
@@ -150,16 +149,8 @@ class PurchaseOrder(models.Model):
     _description = "Purchase Order Lines"
     _order = "id desc"
 
-    # 👇 new field for multi-company
     company_id = fields.Many2one(
-        "res.company",
-        string="Company",
-        required=True,
-        default=lambda self: self.env.company,
-        domain=lambda self: [
-            ("id", "in", self.env.companies.ids)
-        ],  # only allowed companies
-        index=True,
+        "res.company", default=lambda s: s.env.company, required=True
     )
     reffno = fields.Char(string="Reference Number")  # Consider renaming for clarity
     vendor_id = fields.Many2one(
@@ -203,12 +194,27 @@ class PurchaseOrder(models.Model):
             [("name", "=", "SL")], limit=1
         ),
         readonly=True,
+        tracking=True,
     )
+
     rate = fields.Float(
         string="Exchange Rate",
         compute="_compute_exchange_rate",
         store=True,
         readonly=True,
+        tracking=True,
+    )
+    # 🆕 Add state field
+    state = fields.Selection(
+        [
+            ("draft", "Draft"),
+            ("pending", "Pending"),
+            ("confirmed", "Confirmed"),
+            ("cancel", "Cancelled"),
+        ],
+        string="Status",
+        default="confirmed",
+        tracking=True,
     )
 
     @api.depends("currency_id", "purchase_date", "company_id")
@@ -219,14 +225,12 @@ class PurchaseOrder(models.Model):
             if not order.currency_id:
                 continue
 
-            # Use the order's date; fallback to today if missing
             doc_date = (
                 fields.Date.to_date(order.purchase_date)
                 if order.purchase_date
                 else fields.Date.today()
             )
 
-            # Get latest rate on or before the doc_date, preferring the order's company, then global (company_id False)
             rate_rec = Rate.search(
                 [
                     ("currency_id", "=", order.currency_id.id),
@@ -246,7 +250,7 @@ class PurchaseOrder(models.Model):
                     {
                         "item_id": line.item_id.id,
                         "purchase_order_line_id": line.id,
-                        "date": fields.Date.today(),
+                        "date": order.purchase_date,
                         "quantity": line.quantity,
                         "source": "Vendor",
                         "destination": "Inventory",
@@ -396,6 +400,7 @@ class PurchaseOrder(models.Model):
                 "order_number": self.id,
                 "payment_method": self.payment_method,
                 "trx_source_id": trx_source_id.id,
+                "rate": self.rate,
                 "purchase_order_id": self.id,
                 "payment_status": (
                     "paid" if self.payment_method == "cash" else "pending"
@@ -406,11 +411,10 @@ class PurchaseOrder(models.Model):
                     0 if self.payment_method == "cash" else total_amount
                 ),
                 "amount_paid": total_amount if self.payment_method == "cash" else 0,
-                "rate": self.rate,  # Add rate field s
             }
         )
 
-        # Now create booking lines d
+        # Now create booking lines
         for line in self.order_lines:
             # Fallback to company currency if not explicitly set
             # Validate currency consistency

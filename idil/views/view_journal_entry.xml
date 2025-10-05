@@ -14,6 +14,8 @@
                             <field name="vendor_id"/>
                             <field name="date"/>
                             <field name="currency_id"/>
+                             <field name="rate"/>
+                             
                         </group>
                         <notebook>
                             <page string="Journal Lines">
