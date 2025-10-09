@@ -26,6 +26,9 @@
                             </group>
                            
                             <group string="Payment Details" col="2">
+                            
+                                <field name="currency_id" readonly="1"/>
+                                <field name="rate" readonly="1"/>
                                 <field name="due_amount" readonly="1"/>
                                 <field name="payment_status" readonly="1"/>
                                 <field name="paid_amount" readonly="1"/>

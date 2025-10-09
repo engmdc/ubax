@@ -8,6 +8,9 @@ class SalesReceipt(models.Model):
     _description = "Sales Receipt"
     _order = "id desc"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
     sales_order_id = fields.Many2one(
         "idil.sale.order",
         string="Sale Order",
@@ -63,6 +66,50 @@ class SalesReceipt(models.Model):
         string="Opening Balance",
         ondelete="cascade",
     )
+    # Currency fields
+    currency_id = fields.Many2one(
+        "res.currency",
+        string="Currency",
+        required=True,
+        default=lambda self: self.env["res.currency"].search(
+            [("name", "=", "SL")], limit=1
+        ),
+        readonly=True,
+        tracking=True,
+    )
+    rate = fields.Float(
+        string="Exchange Rate",
+        compute="_compute_exchange_rate",
+        store=True,
+        readonly=True,
+        tracking=True,
+    )
+
+    @api.depends("currency_id", "receipt_date", "company_id")
+    def _compute_exchange_rate(self):
+        Rate = self.env["res.currency.rate"].sudo()
+        for order in self:
+            order.rate = 0.0
+            if not order.currency_id:
+                continue
+
+            doc_date = (
+                fields.Date.to_date(order.receipt_date)
+                if order.receipt_date
+                else fields.Date.today()
+            )
+
+            rate_rec = Rate.search(
+                [
+                    ("currency_id", "=", order.currency_id.id),
+                    ("name", "<=", doc_date),
+                    ("company_id", "in", [order.company_id.id, False]),
+                ],
+                order="company_id desc, name desc",
+                limit=1,
+            )
+
+            order.rate = rate_rec.rate or 0.0
 
     def _compute_remaining_amount(self):
         for record in self:
@@ -166,6 +213,7 @@ class SalesReceipt(models.Model):
                             "customer_id": record.customer_id.id,
                             "reffno": order_name,  # Use the Sale Order name as reference
                             "payment_method": "other",
+                            "rate": record.rate,
                             "sale_order_id": record.sales_order_id.id,
                             "pos_payment_method": False,  # Update if necessary
                             "payment_status": (

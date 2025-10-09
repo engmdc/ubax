@@ -1,98 +1,121 @@
 <odoo>
-    <data>
-        <record id="view_journal_entry_form" model="ir.ui.view">
-            <field name="name">journal.entry.form</field>
-            <field name="model">idil.journal.entry</field>
-            <field name="arch" type="xml">
-                <form string="Journal Entry">
-                    <sheet>
-                        <h1>
-                            <field name="name"/>
-                        </h1>
-                        <group>
-                            <field name="customer_id"/>
-                            <field name="vendor_id"/>
-                            <field name="date"/>
-                            <field name="currency_id"/>
-                             <field name="rate"/>
-                             
-                        </group>
-                        <notebook>
-                            <page string="Journal Lines">
-                                <field name="line_ids" mode="tree" options="{'footer': 'total'}">
-                                    <tree editable="bottom">
-                                        
-                                        <field name="account_id" domain="[('currency_id', '=', parent.currency_id)]"/>
-                                        <field name="debit"/>
-                                        <field name="credit"/>
-                                        <field name="description"/>
-                                        <field name="name"/>
-                                    </tree>
-                                    <form>
-                                        <group>
-                                            
-                                            <field name="account_id"
-                                                   domain="[('currency_id', '=', parent.currency_id)]"/>
-                                            <field name="currency_id" invisible="1"/>
-                                            <field name="debit"/>
-                                            <field name="credit"/>
-                                            <field name="description"/>
-                                            <field name="name"/>
-                                        </group>
-                                    </form>
-                                </field>
-                            </page>
-                        </notebook>
-                        <group>
-                            <group>
-                                <h1>
-                                    <label for="total_debit" string="Total Debit"/>
-                                    <field name="total_debit"/>
-                                </h1>
-                            </group>
-                            <group>
-                                <h1>
-                                    <label for="total_credit" string="Total Credit"/>
-                                    <field name="total_credit"/>
-                                </h1>
-                            </group>
-                        </group>
-                    </sheet>
-                </form>
-            </field>
-        </record>
+  <data>
 
-        <record id="view_journal_entry_tree" model="ir.ui.view">
-            <field name="name">journal.entry.tree</field>
-            <field name="model">idil.journal.entry</field>
-            <field name="arch" type="xml">
-                <tree string="Journal Entries">
-                    <field name="date"/>
+    <!-- ===== Form View ===== -->
+    <record id="view_journal_entry_form" model="ir.ui.view">
+      <field name="name">journal.entry.form</field>
+      <field name="model">idil.journal.entry</field>
+      <field name="arch" type="xml">
+        <form string="Journal Entry">
+          <sheet> 
+
+            <!-- Title -->
+            <div class="oe_title">
+              <h1><field name="name"/></h1>
+            </div>
+
+            <!-- Top info: 2 columns -->
+            <group class="o_group o_group_col_2">
+              <group>
+                <field name="partner_type" required="1" class="o_main_field"/>
+                <field name="customer_id" invisible="partner_type != 'customer'"/>
+                <field name="vendor_id"   invisible="partner_type != 'vendor'"/>
+              </group>
+              <group>
+                <field name="date"/>
+                <field name="currency_id"/>
+                <field name="rate"/>
+              </group>
+            </group>
+
+            <notebook>
+              <!-- Journal Lines -->
+              <page string="Journal Lines">
+                <field name="line_ids" mode="tree,form">
+                  <tree editable="bottom" default_order="id desc">
+                    <field name="account_id" domain="[('currency_id', '=', parent.currency_id)]"/>
+                    <field name="currency_amount_id"/>
+                     
+                    <field name="debit"  widget="monetary" options="{'currency_field':'currency_amount_id'}" sum="Total Debit"/>
+                    <field name="credit" widget="monetary" options="{'currency_field':'currency_amount_id'}" sum="Total Credit"/>
+                    <field name="description"/>
                     <field name="name"/>
-                    <field name="customer_id"/>
-                    <field name="vendor_id"/>
+                  </tree>
 
-                    <field name="total_debit" string="Amount"/>
-                    <field name="currency_id"/>
+                  <form string="Journal Line">
+                    <group class="o_group o_group_col_2">
+                      <group>
+                        <field name="account_id" domain="[('currency_id', '=', parent.currency_id)]"/>
+                        <field name="currency_id" invisible="1"/>
+                      </group>
+                      <group>
+                        <field name="debit"  widget="monetary" options="{'currency_field':'currency_id'}"/>
+                        <field name="credit" widget="monetary" options="{'currency_field':'currency_id'}"/>
+                      </group>
+                    </group>
+                    <group>
+                      <field name="description"/>
+                      <field name="name"/>
+                    </group>
+                  </form>
+                </field>
+              </page>
+            </notebook>
 
-                    <field name="line_ids"/>
+            <!-- Totals -->
+            <group class="o_group o_group_col_2">
+              <group>
+                <label for="total_debit" string="Total Debit"/>
+                <div>
+                  <field name="total_debit" readonly="1" widget="monetary"
+                         options="{'currency_field':'currency_id'}"
+                         class="o_stat_info o_bold"/>
+                </div>
+              </group>
+              <group>
+                <label for="total_credit" string="Total Credit"/>
+                <div>
+                  <field name="total_credit" readonly="1" widget="monetary"
+                         options="{'currency_field':'currency_id'}"
+                         class="o_stat_info o_bold"/>
+                </div>
+              </group>
+            </group>
 
+          </sheet>
+        </form>
+      </field>
+    </record>
 
-                </tree>
-            </field>
-        </record>
+    <!-- ===== Tree View ===== -->
+    <record id="view_journal_entry_tree" model="ir.ui.view">
+      <field name="name">journal.entry.tree</field>
+      <field name="model">idil.journal.entry</field>
+      <field name="arch" type="xml">
+        <tree string="Journal Entries" default_order="date desc, id desc">
+          <field name="date"/>
+          <field name="name"/>
+          <field name="partner_type"/>
+          <field name="customer_id" invisible="partner_type != 'customer'"/>
+          <field name="vendor_id"   invisible="partner_type != 'vendor'"/>
+          <field name="currency_id"/>
+          <field name="total_debit" string="Amount" widget="monetary" options="{'currency_field':'currency_id'}"/>
+          <field name="line_ids" invisible="1"/>
+        </tree>
+      </field>
+    </record>
 
-        <record id="action_journal_entry" model="ir.actions.act_window">
-            <field name="name">Journal Entries</field>
-            <field name="res_model">idil.journal.entry</field>
-            <field name="view_mode">tree,form</field>
-            <field name="help" type="html">
-                <p class="o_view_nocontent_smiling_face">
-                    Create your first journal entry
-                </p>
-            </field>
-        </record>
+    <!-- ===== Action ===== -->
+    <record id="action_journal_entry" model="ir.actions.act_window">
+      <field name="name">Journal Entries</field>
+      <field name="res_model">idil.journal.entry</field>
+      <field name="view_mode">tree,form</field>
+      <field name="help" type="html">
+        <p class="o_view_nocontent_smiling_face">
+          Create your first journal entry
+        </p>
+      </field>
+    </record>
 
-
-    </data>
+  </data>
 </odoo>

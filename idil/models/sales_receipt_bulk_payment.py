@@ -8,6 +8,9 @@ class ReceiptBulkPayment(models.Model):
     _description = "Bulk Sales Receipt Payment"
     _inherit = ["mail.thread", "mail.activity.mixin"]
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
     name = fields.Char(string="Reference", default="New", readonly=True, copy=False)
     partner_type = fields.Selection(
         [("salesperson", "Salesperson"), ("customer", "Customer")],
@@ -26,11 +29,7 @@ class ReceiptBulkPayment(models.Model):
         "bulk_payment_id",
         string="Receipt Lines",
     )
-    state = fields.Selection(
-        [("draft", "Draft"), ("confirmed", "Confirmed")],
-        default="draft",
-        string="Status",
-    )
+
     due_receipt_amount = fields.Float(
         string="Total Due Receipt Amount",
         compute="_compute_due_receipt",
@@ -47,6 +46,61 @@ class ReceiptBulkPayment(models.Model):
     payment_methods_total = fields.Float(
         string="Payment Methods Total", compute="_compute_payment_methods_total"
     )
+    # Currency fields
+    currency_id = fields.Many2one(
+        "res.currency",
+        string="Currency",
+        required=True,
+        default=lambda self: self.env["res.currency"].search(
+            [("name", "=", "SL")], limit=1
+        ),
+        readonly=True,
+        tracking=True,
+    )
+
+    rate = fields.Float(
+        string="Exchange Rate",
+        compute="_compute_exchange_rate",
+        store=True,
+        readonly=True,
+        tracking=True,
+    )
+    # 🆕 Add state field
+    state = fields.Selection(
+        [
+            ("draft", "Draft"),
+            ("pending", "Pending"),
+            ("confirmed", "Confirmed"),
+            ("cancel", "Cancelled"),
+        ],
+        string="Status",
+        default="draft",
+        tracking=True,
+    )
+
+    @api.depends("currency_id", "date", "company_id")
+    def _compute_exchange_rate(self):
+        Rate = self.env["res.currency.rate"].sudo()
+        for order in self:
+            order.rate = 0.0
+            if not order.currency_id:
+                continue
+
+            doc_date = (
+                fields.Date.to_date(order.date) if order.date else fields.Date.today()
+            )
+
+            rate_rec = Rate.search(
+                [
+                    ("currency_id", "=", order.currency_id.id),
+                    ("name", "<=", doc_date),
+                    ("company_id", "in", [order.company_id.id, False]),
+                ],
+                order="company_id desc, name desc",
+                limit=1,
+            )
+
+            order.rate = rate_rec.rate or 0.0
 
     @api.depends("payment_method_ids.payment_amount")
     def _compute_payment_methods_total(self):
@@ -240,6 +294,7 @@ class ReceiptBulkPayment(models.Model):
                                     else False
                                 ),
                                 "reffno": self.name,
+                                "rate": self.rate,
                                 "sale_order_id": (
                                     receipt.sales_order_id.id
                                     if receipt.sales_order_id
@@ -503,6 +558,9 @@ class ReceiptBulkPaymentMethod(models.Model):
     _name = "idil.receipt.bulk.payment.method"
     _description = "Bulk Receipt Payment Method"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
     bulk_payment_id = fields.Many2one(
         "idil.receipt.bulk.payment", string="Bulk Payment"
     )
@@ -512,6 +570,24 @@ class ReceiptBulkPaymentMethod(models.Model):
         required=True,
         domain=[("account_type", "in", ["cash", "bank_transfer", "sales_expense"])],
     )
+
+    currency_id = fields.Many2one(
+        related="payment_account_id.currency_id",
+        store=True,
+        readonly=True,
+    )
+    # Editable rate per line (defaults from parent)
+    rate = fields.Float(
+        string="Exchange Rate",
+        compute="_compute_exchange_rate",
+        store=True,
+        tracking=True,
+    )
+    payment_date = fields.Datetime(string="Payment Date", default=fields.Datetime.now)
+
+    # USD mirror field (editable)
+    usd_amount = fields.Float(string="USD Amount")
+
     payment_amount = fields.Float(string="Amount", required=True)
     note = fields.Char(string="Memo/Reference")
     sales_payment_id = fields.Many2one(
@@ -519,3 +595,41 @@ class ReceiptBulkPaymentMethod(models.Model):
         string="Linked Sales Payment",
         ondelete="cascade",  # This makes it auto-delete if sales payment is deleted
     )
+
+    @api.depends("currency_id", "payment_date", "company_id")
+    def _compute_exchange_rate(self):
+        Rate = self.env["res.currency.rate"].sudo()
+        for order in self:
+            order.rate = 0.0
+            if not order.currency_id:
+                continue
+
+            doc_date = (
+                fields.Date.to_date(order.payment_date)
+                if order.payment_date
+                else fields.Date.today()
+            )
+
+            rate_rec = Rate.search(
+                [
+                    ("currency_id", "=", order.currency_id.id),
+                    ("name", "<=", doc_date),
+                    ("company_id", "in", [order.company_id.id, False]),
+                ],
+                order="company_id desc, name desc",
+                limit=1,
+            )
+
+            order.rate = rate_rec.rate or 0.0
+
+    @api.onchange("usd_amount", "rate")
+    def _onchange_usd_amount_or_rate(self):
+        """Typing USD updates local amount."""
+        if self.usd_amount and self.rate:
+            self.payment_amount = self.usd_amount * self.rate
+
+    @api.onchange("payment_amount")
+    def _onchange_payment_amount(self):
+        """Typing local amount updates USD (only if rate set)."""
+        if self.payment_amount and self.rate:
+            self.usd_amount = self.payment_amount / self.rate

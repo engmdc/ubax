@@ -9,9 +9,10 @@
                 <field name="name"/>
                 <field name="manufacturing_order_id"/>
                 <field name="employee_id"/>
-                <field name="commission_amount"/>
-                <field name="commission_paid"/>
-                <field name="commission_remaining"/>
+                <field name="currency_id"/>
+                <field name="commission_amount" sum="Total"/>
+                <field name="commission_paid" sum="Total"/>
+                <field name="commission_remaining" sum="Total"/>
                 <field name="payment_status" widget="statusbar" statusbar_visible="pending,partial_paid,paid"
                        decoration-danger="payment_status == 'pending'"
                        decoration-warning="payment_status == 'partial_paid'"
@@ -64,7 +65,8 @@
                                    context="{'default_commission_id': active_id}">
                                 <tree editable="bottom">
                                     <field name="employee_id"/>
-                                    <field name="amount"/>
+                                    <field name="currency_id"/>
+                                    <field name="amount" sum="Total"/>
                                     <field name="date"/>
                                     <button name="unlink" type="object" string="Delete" class="btn-danger"/>
                                 </tree>

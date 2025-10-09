@@ -197,9 +197,9 @@ class item(models.Model):
     def check_date_not_in_past(self):
         for record in self:
             today = fields.Date.today()
-            if record.purchase_date < today or record.expiration_date < today:
+            if record.expiration_date < today:
                 raise ValidationError(
-                    "Both purchase and expiration dates must be today or in the future."
+                    "Expiration dates must be today or in the future."
                 )
 
     @api.constrains("quantity", "cost_price")
@@ -224,6 +224,7 @@ class ItemMovement(models.Model):
     _name = "idil.item.movement"
     _description = "Item Movement"
     _inherit = ["mail.thread", "mail.activity.mixin"]
+    _order = "id desc"
 
     item_id = fields.Many2one("idil.item", string="Item", required=True, tracking=True)
     date = fields.Date(

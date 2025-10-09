@@ -14,11 +14,16 @@
                 <field name="payment_method" string="Payment Method" class="o_td_center"/>
                 <field name="account_number" class="o_td_center"/>
                 <!-- Show monetary properly; if your model has currency_id, this will format amounts -->
-                <field name="amount" sum="Total" widget="monetary" options="{'currency_field': 'currency_id'}" class="o_td_right"/>
+                
+                <field name="currency_amount_id"/>
+
+                <field name="amount" sum="Total" widget="monetary" options="{'currency_field': 'currency_amount_id'}" class="o_td_right"/>
+                
+
                 <!-- Compact preview of lines count for quick scan -->
                 <field name="order_lines" string="Items" widget="one2many_count" class="o_td_center"/>
                 <field name="purchase_date" class="o_td_center"/>
-                 <field name="state"/>
+                <field name="state"/>
 
             </tree>
         </field>
@@ -103,7 +108,12 @@
                     <group string="Payment Information">
                         <field name="payment_method" string="Payment Method"/>
                         <field name="account_number"/>
-                        <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                        <field name="currency_amount_id"/>
+                        
+                        <field  name="amount"
+                                widget="monetary"
+                                options="{'currency_field': 'currency_amount_id'}"
+                                readonly="1"/>
                         <field name="description" placeholder="Add a short description..."/>
                     </group>
 
@@ -123,9 +133,9 @@
                                     <field name="quantity" class="o_td_center"/>
                                     <field name="cost_price" string="Unit Cost" class="o_td_right"
                                            digits="[16, 5]"/>
-                                    <field name="amount" string="Total"
-                                           widget="monetary" options="{'currency_field': 'currency_id'}"
-                                           readonly="1" class="o_td_right" sum="Total"/>
+                                     <field name="amount" string="Total"
+                                           widget="monetary" 
+                                           readonly="1" class="o_td_right"/>
                                     <field name="expiration_date" class="o_td_center"/>
                                 </tree>
 
@@ -137,7 +147,7 @@
                                             <field name="cost_price" digits="[16,5]"/>
                                         </group>
                                         <group>
-                                            <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                                            <field name="amount" widget="monetary" readonly="1"/>
                                             <field name="expiration_date"/>
                                         </group>
                                     </group>

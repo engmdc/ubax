@@ -221,6 +221,10 @@ class SalespersonTransaction(models.Model):
     running_balance = fields.Float(
         string="Running Balance", compute="_compute_running_balance", store=True
     )
+    sales_receipt_id = fields.Many2one(
+        "idil.sales.receipt", string="Sales Receipt", ondelete="cascade"
+    )
+
     sales_payment_id = fields.Many2one(
         "idil.sales.payment", string="Sales Payment", ondelete="cascade"
     )

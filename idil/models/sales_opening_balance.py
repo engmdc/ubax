@@ -66,37 +66,52 @@ class SalesOpeningBalance(models.Model):
             )
             record.total_due_balance = sum(receipts.mapped("remaining_amount"))
 
-    @api.depends("currency_id")
+    @api.depends("currency_id", "date", "company_id")
     def _compute_exchange_rate(self):
+        Rate = self.env["res.currency.rate"].sudo()
         for order in self:
-            if order.currency_id:
-                rate = self.env["res.currency.rate"].search(
-                    [
-                        ("currency_id", "=", order.currency_id.id),
-                        ("name", "=", fields.Date.today()),
-                        ("company_id", "=", self.env.company.id),
-                    ],
-                    limit=1,
-                )
-                order.rate = rate.rate if rate else 0.0
-            else:
-                order.rate = 0.0
+            order.rate = 0.0
+            if not order.currency_id:
+                continue
 
-    @api.constrains("currency_id")
-    def _check_exchange_rate_exists(self):
-        for order in self:
-            if order.currency_id:
-                rate = self.env["res.currency.rate"].search_count(
-                    [
-                        ("currency_id", "=", order.currency_id.id),
-                        ("name", "=", fields.Date.today()),
-                        ("company_id", "=", self.env.company.id),
-                    ]
-                )
-                if rate == 0:
-                    raise exceptions.ValidationError(
-                        "No exchange rate found for today. Please insert today's rate before saving."
-                    )
+            doc_date = (
+                fields.Date.to_date(order.date) if order.date else fields.Date.today()
+            )
+
+            rate_rec = Rate.search(
+                [
+                    ("currency_id", "=", order.currency_id.id),
+                    ("name", "<=", doc_date),
+                    ("company_id", "in", [order.company_id.id, False]),
+                ],
+                order="company_id desc, name desc",
+                limit=1,
+            )
+
+            order.rate = rate_rec.rate or 0.0
+
+    def _require_rate(self, currency_id, date, company_id):
+        """Return a positive FX rate or raise a clear ValidationError."""
+        Rate = self.env["res.currency.rate"].sudo()
+        doc_date = fields.Date.to_date(date) if date else fields.Date.today()
+        rec = Rate.search(
+            [
+                ("currency_id", "=", currency_id),
+                ("name", "<=", doc_date),
+                ("company_id", "in", [company_id, False]),
+            ],
+            order="company_id desc, name desc",
+            limit=1,
+        )
+
+        rate = rec.rate or 0.0
+        if rate <= 0.0:
+            currency = self.env["res.currency"].browse(currency_id)
+            raise ValidationError(
+                f"No valid exchange rate (> 0) found for currency '{currency.name}' "
+                f"on or before {doc_date}. Please add a rate in Accounting ▸ Configuration ▸ Currencies."
+            )
+        return rate
 
     @api.model
     def create(self, vals):
@@ -136,14 +151,6 @@ class SalesOpeningBalance(models.Model):
                         or "New"
                     )
 
-                currency_id = (
-                    vals.get("currency_id")
-                    or self.env["res.currency"]
-                    .search([("name", "=", "SL")], limit=1)
-                    .id
-                )
-                rate = vals.get("rate", 0)
-                date_val = vals.get("date", fields.Date.context_today(self))
                 name = vals["name"]
 
                 # --- 1. General validations ---
@@ -156,19 +163,6 @@ class SalesOpeningBalance(models.Model):
                     )
 
                 # If currency rate not provided, try to get it
-                if not rate:
-                    currency = self.env["res.currency"].browse(currency_id)
-                    rate_obj = self.env["res.currency.rate"].search(
-                        [
-                            ("currency_id", "=", currency.id),
-                            ("name", "=", fields.Date.today()),
-                            ("company_id", "=", self.env.company.id),
-                        ],
-                        limit=1,
-                    )
-                    rate = rate_obj.rate if rate_obj else 0.0
-                if rate <= 0:
-                    raise ValidationError("Rate cannot be zero.")
 
                 trx_source_id = self.env["idil.transaction.source"].search(
                     [("name", "=", "Sales Opening Balance")], limit=1
@@ -208,17 +202,18 @@ class SalesOpeningBalance(models.Model):
                             "Exchange clearing accounts are required for currency conversion."
                         )
 
-                    cost_amount_usd = line.amount / rate
+                    cost_amount_usd = line.amount / record.rate
 
                     # --- Booking (Header) ---
                     transaction_booking = self.env["idil.transaction_booking"].create(
                         {
-                            "trx_date": date_val,
+                            "trx_date": record.date,
                             "reffno": name,
                             "payment_status": "pending",
                             "payment_method": "opening_balance",
                             "amount": line.amount,
                             "amount_paid": 0.0,
+                            "rate": record.rate,
                             "remaining_amount": line.amount,
                             "trx_source_id": trx_source_id.id,
                             "sales_person_id": line.sales_person_id.id,
@@ -235,7 +230,7 @@ class SalesOpeningBalance(models.Model):
                             "transaction_type": "dr",
                             "dr_amount": line.amount,
                             "cr_amount": 0,
-                            "transaction_date": date_val,
+                            "transaction_date": record.date,
                             "description": f"Opening Balance for {line.sales_person_id.name}",
                         }
                     )
@@ -248,7 +243,7 @@ class SalesOpeningBalance(models.Model):
                             "transaction_type": "cr",
                             "dr_amount": 0.0,
                             "cr_amount": line.amount,
-                            "transaction_date": date_val,
+                            "transaction_date": record.date,
                             "description": f"Opening Balance for {line.sales_person_id.name}",
                         }
                     )
@@ -261,7 +256,7 @@ class SalesOpeningBalance(models.Model):
                             "transaction_type": "cr",
                             "dr_amount": 0.0,
                             "cr_amount": cost_amount_usd,
-                            "transaction_date": date_val,
+                            "transaction_date": record.date,
                             "description": f"Opening Balance for {line.sales_person_id.name}",
                         }
                     )
@@ -274,7 +269,7 @@ class SalesOpeningBalance(models.Model):
                             "transaction_type": "dr",
                             "dr_amount": cost_amount_usd,
                             "cr_amount": 0.0,
-                            "transaction_date": date_val,
+                            "transaction_date": record.date,
                             "description": f"Opening Balance for {line.sales_person_id.name}",
                         }
                     )
@@ -285,7 +280,7 @@ class SalesOpeningBalance(models.Model):
                             "due_amount": line.amount,
                             "paid_amount": 0.0,
                             "remaining_amount": line.amount,
-                            "receipt_date": date_val,
+                            "receipt_date": record.date,
                             "sales_opening_balance_id": record.id,
                         }
                     )

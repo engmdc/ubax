@@ -11,6 +11,7 @@ class JournalEntry(models.Model):
     company_id = fields.Many2one(
         "res.company", default=lambda s: s.env.company, required=True
     )
+
     name = fields.Char(
         string="Journal no",
         required=True,
@@ -18,6 +19,11 @@ class JournalEntry(models.Model):
         readonly=True,
         index=True,
         default=lambda self: _("New"),
+    )
+    partner_type = fields.Selection(
+        [("vendor", "Vendor"), ("customer", "Customer"), ("others", "Others")],
+        string="Type",
+        required=True,
     )
     date = fields.Date(
         string="Journal Date", required=True, default=fields.Date.context_today
@@ -129,8 +135,61 @@ class JournalEntry(models.Model):
     def default_get(self, fields_list):
         res = super(JournalEntry, self).default_get(fields_list)
         if "line_ids" in fields_list:
-            res.update({"line_ids": [(0, 0, {}) for _ in range(8)]})
+            res.update({"line_ids": [(0, 0, {}) for _ in range(2)]})
         return res
+
+    # --- helper: pick the right partner account ---
+    def _get_partner_account(self):
+        self.ensure_one()
+        if (
+            self.partner_type == "customer"
+            and self.customer_id
+            and getattr(self.customer_id, "account_receivable_id", False)
+        ):
+            return self.customer_id.account_receivable_id
+        if (
+            self.partner_type == "vendor"
+            and self.vendor_id
+            and getattr(self.vendor_id, "account_payable_id", False)
+        ):
+            return self.vendor_id.account_payable_id
+        return False  # others or not set
+
+    # --- helper: ensure 2 lines exist, set/clear the FIRST line account (safe during onchange) ---
+    def _set_first_line_account(self, account):
+        self.ensure_one()
+        if not self.line_ids:
+            # make sure we have two lines ready for the user
+            self.line_ids = [(0, 0, {}), (0, 0, {})]
+        first_line = self.line_ids[0]  # do NOT sort; NewId is not comparable
+        first_line.account_id = account.id if account else False
+
+    # --- react when type changes ---
+    @api.onchange("partner_type")
+    def _onchange_partner_type(self):
+        # keep partners mutually exclusive for clarity
+        if self.partner_type == "customer":
+            self.vendor_id = False
+        elif self.partner_type == "vendor":
+            self.customer_id = False
+        # set/clear first line based on the current type + selected partner
+        self._set_first_line_account(self._get_partner_account())
+
+    # --- react when customer chosen ---
+    @api.onchange("customer_id")
+    def _onchange_customer_id(self):
+        if self.customer_id:
+            self.vendor_id = False
+        if self.partner_type == "customer":
+            self._set_first_line_account(self._get_partner_account())
+
+    # --- react when vendor chosen ---
+    @api.onchange("vendor_id")
+    def _onchange_vendor_id(self):
+        if self.vendor_id:
+            self.customer_id = False
+        if self.partner_type == "vendor":
+            self._set_first_line_account(self._get_partner_account())
 
     @api.model
     def create(self, vals):
@@ -220,16 +279,79 @@ class JournalEntry(models.Model):
             )
         return trx_source.id
 
+    # def create_transaction_booking(self):
+    #     try:
+    #         with self.env.cr.savepoint():
+    #             trx_source_id = self.get_manual_transaction_source_id()
+    #             for entry in self:
+    #                 # Remove existing transaction bookings
+    #                 self.env["idil.transaction_booking"].search(
+    #                     [("journal_entry_id", "=", entry.id)]
+    #                 ).unlink()
+
+    #                 booking_vals = {
+    #                     "transaction_number": self.env["ir.sequence"].next_by_code(
+    #                         "idil.transaction_booking.sequence"
+    #                     )
+    #                     or _("New"),
+    #                     "reffno": entry.name,
+    #                     "trx_date": entry.date,
+    #                     "amount": entry.total_debit,  # Assuming total_debit equals the total amount of the transaction
+    #                     "debit_total": entry.total_debit,
+    #                     "credit_total": entry.total_credit,
+    #                     "payment_method": "other",
+    #                     "payment_status": "paid",
+    #                     "rate": entry.rate,
+    #                     "trx_source_id": trx_source_id,
+    #                     "journal_entry_id": entry.id,  # Link to the journal entry
+    #                 }
+    #                 main_booking = self.env["idil.transaction_booking"].create(
+    #                     booking_vals
+    #                 )
+    #                 for line in entry.line_ids:
+    #                     if not line.account_id:
+    #                         continue  # Skip lines without an account_id
+    #                     if line.debit:
+    #                         self.env["idil.transaction_bookingline"].create(
+    #                             {
+    #                                 "transaction_booking_id": main_booking.id,
+    #                                 "description": line.description,
+    #                                 "account_number": line.account_id.id,
+    #                                 "transaction_type": "dr",
+    #                                 "dr_amount": line.debit,
+    #                                 "cr_amount": 0,
+    #                                 "transaction_date": entry.date,
+    #                             }
+    #                         )
+    #                     if line.credit:
+    #                         self.env["idil.transaction_bookingline"].create(
+    #                             {
+    #                                 "transaction_booking_id": main_booking.id,
+    #                                 "description": line.description,
+    #                                 "account_number": line.account_id.id,
+    #                                 "transaction_type": "cr",
+    #                                 "cr_amount": line.credit,
+    #                                 "dr_amount": 0,
+    #                                 "transaction_date": entry.date,
+    #                             }
+    #                         )
+    #     except Exception as e:
+    #         logger.error(f"transaction failed: {str(e)}")
+    #         raise ValidationError(f"Transaction failed: {str(e)}")
+
     def create_transaction_booking(self):
         try:
             with self.env.cr.savepoint():
                 trx_source_id = self.get_manual_transaction_source_id()
                 for entry in self:
-                    # Remove existing transaction bookings
+                    # Remove existing booking(s) for this journal
                     self.env["idil.transaction_booking"].search(
                         [("journal_entry_id", "=", entry.id)]
                     ).unlink()
 
+                    amount = entry.total_debit
+
+                    # ---- Main booking with partner-specific field ----
                     booking_vals = {
                         "transaction_number": self.env["ir.sequence"].next_by_code(
                             "idil.transaction_booking.sequence"
@@ -237,21 +359,27 @@ class JournalEntry(models.Model):
                         or _("New"),
                         "reffno": entry.name,
                         "trx_date": entry.date,
-                        "amount": entry.total_debit,  # Assuming total_debit equals the total amount of the transaction
+                        "amount": amount,
                         "debit_total": entry.total_debit,
                         "credit_total": entry.total_credit,
-                        "payment_method": "other",
-                        "payment_status": "paid",
                         "rate": entry.rate,
                         "trx_source_id": trx_source_id,
-                        "journal_entry_id": entry.id,  # Link to the journal entry
+                        "journal_entry_id": entry.id,
                     }
+                    if entry.partner_type == "customer" and entry.customer_id:
+                        booking_vals["customer_id"] = entry.customer_id.id
+                        # booking_vals["journal_entry_id"] = entry.id  # already set
+                    elif entry.partner_type == "vendor" and entry.vendor_id:
+                        booking_vals["vendor_id"] = entry.vendor_id.id
+
                     main_booking = self.env["idil.transaction_booking"].create(
                         booking_vals
                     )
+
+                    # ---- Booking lines (unchanged) ----
                     for line in entry.line_ids:
                         if not line.account_id:
-                            continue  # Skip lines without an account_id
+                            continue
                         if line.debit:
                             self.env["idil.transaction_bookingline"].create(
                                 {
@@ -276,6 +404,42 @@ class JournalEntry(models.Model):
                                     "transaction_date": entry.date,
                                 }
                             )
+
+                    # ---- Partner-specific side records (no payment_method anywhere) ----
+                    if entry.partner_type == "vendor" and entry.vendor_id:
+                        # Create Vendor Transaction (pending by default)
+                        self.env["idil.vendor_transaction"].create(
+                            {
+                                "order_number": entry.id,  # or entry.name, depending on your model
+                                "transaction_number": main_booking.transaction_number,
+                                "transaction_date": entry.date,
+                                "vendor_id": entry.vendor_id.id,
+                                "amount": amount,
+                                "remaining_amount": amount,
+                                "paid_amount": 0,
+                                "reffno": entry.name,
+                                "transaction_booking_id": main_booking.id,
+                                "payment_status": "pending",
+                                # "journal_entry_id": entry.id,  # uncomment if the model has this field
+                            }
+                        )
+
+                    elif entry.partner_type == "customer" and entry.customer_id:
+                        # Create Sales Receipt shell
+                        self.env["idil.sales.receipt"].create(
+                            {
+                                # If your model truly expects "cusotmer_sale_order_id", add it; else omit.
+                                # "cusotmer_sale_order_id": entry.id,  # <= ONLY if that exact field exists
+                                "customer_id": entry.customer_id.id,
+                                "due_amount": amount,
+                                "paid_amount": 0,
+                                "remaining_amount": amount,
+                                # "transaction_booking_id": main_booking.id,  # uncomment if the model has it
+                                # "journal_entry_id": entry.id,              # uncomment if the model has it
+                                # "reference": entry.name,                   # optional if your model has a field
+                            }
+                        )
+                    # 'others' => no extra record
         except Exception as e:
             logger.error(f"transaction failed: {str(e)}")
             raise ValidationError(f"Transaction failed: {str(e)}")
@@ -356,6 +520,23 @@ class JournalEntryLine(models.Model):
         store=True,
         readonly=True,
     )
+    # 👇 Will change immediately when account changes; also searchable/groupable (store=True)
+    currency_amount_id = fields.Many2one(
+        "res.currency",
+        string="Currency",
+        compute="_compute_currency_amount",
+        store=True,
+    )
+
+    @api.depends("account_id", "account_id.currency_id", "account_id.company_id")
+    def _compute_currency_amount(self):
+        """Pick account currency; fallback to the account's company or env company."""
+        for rec in self:
+            rec.currency_amount_id = rec.account_id.currency_id or (
+                rec.account_id.company_id.currency_id
+                if rec.account_id and rec.account_id.company_id
+                else rec.env.company.currency_id
+            )
 
     @api.onchange("debit")
     def _onchange_debit(self):

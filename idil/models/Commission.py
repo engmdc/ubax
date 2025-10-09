@@ -9,6 +9,9 @@ class Commission(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "id desc"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
     name = fields.Char(
         string="Commission Reference",
         required=True,
@@ -16,7 +19,16 @@ class Commission(models.Model):
         default="New",
         readonly=True,
     )
-
+    # Currency fields
+    currency_id = fields.Many2one(
+        "res.currency",
+        string="Currency",
+        required=True,
+        default=lambda self: self.env["res.currency"].search(
+            [("name", "=", "SL")], limit=1
+        ),
+        readonly=True,
+    )
     manufacturing_order_id = fields.Many2one(
         "idil.manufacturing.order",
         string="Manufacturing Order",
@@ -198,8 +210,21 @@ class CommissionPayment(models.Model):
     _description = "Commission Payment"
     _order = "id desc"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
     commission_id = fields.Many2one(
         "idil.commission", string="Commission", required=True
+    )
+    # Currency fields
+    currency_id = fields.Many2one(
+        "res.currency",
+        string="Currency",
+        required=True,
+        default=lambda self: self.env["res.currency"].search(
+            [("name", "=", "SL")], limit=1
+        ),
+        readonly=True,
     )
     employee_id = fields.Many2one("idil.employee", string="Employee", required=True)
     amount = fields.Float(string="Amount", digits=(16, 5), required=True)
