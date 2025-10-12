@@ -23,57 +23,57 @@ class AccountHeader(models.Model):
         "idil.chart.account.subheader", "header_id", string="Sub Headers"
     )
 
-    _sql_constraints = [
-        # Unique per company
-        (
-            "uniq_header_code_company",
-            "unique(company_id, code)",
-            "Header Code must be unique per company.",
-        ),
-        (
-            "uniq_header_name_company",
-            "unique(company_id, name)",
-            "Header Name must be unique per company.",
-        ),
-    ]
+    # _sql_constraints = [
+    #     # Unique per company
+    #     (
+    #         "uniq_header_code_company",
+    #         "unique(company_id, code)",
+    #         "Header Code must be unique per company.",
+    #     ),
+    #     (
+    #         "uniq_header_name_company",
+    #         "unique(company_id, name)",
+    #         "Header Name must be unique per company.",
+    #     ),
+    # ]
 
-    @api.constrains("code", "name", "company_id")
-    def _check_header_uniqueness_verbose(self):
-        for rec in self:
-            if not rec.company_id:
-                continue
-            # code
-            if rec.code:
-                other = self.search(
-                    [
-                        ("id", "!=", rec.id),
-                        ("company_id", "=", rec.company_id.id),
-                        ("code", "=", rec.code),
-                    ],
-                    limit=1,
-                )
-                if other:
-                    raise ValidationError(
-                        f"Duplicate Header Code in company '{rec.company_id.name}'.\n"
-                        f"Your record: Code='{rec.code}', Name='{rec.name}'.\n"
-                        f"Existing: Code='{other.code}', Name='{other.name}' (ID {other.id})."
-                    )
-            # name
-            if rec.name:
-                other = self.search(
-                    [
-                        ("id", "!=", rec.id),
-                        ("company_id", "=", rec.company_id.id),
-                        ("name", "=", rec.name),
-                    ],
-                    limit=1,
-                )
-                if other:
-                    raise ValidationError(
-                        f"Duplicate Header Name in company '{rec.company_id.name}'.\n"
-                        f"Your record: Name='{rec.name}', Code='{rec.code}'.\n"
-                        f"Existing: Name='{other.name}', Code='{other.code}' (ID {other.id})."
-                    )
+    # @api.constrains("code", "name", "company_id")
+    # def _check_header_uniqueness_verbose(self):
+    #     for rec in self:
+    #         if not rec.company_id:
+    #             continue
+    #         # code
+    #         if rec.code:
+    #             other = self.search(
+    #                 [
+    #                     ("id", "!=", rec.id),
+    #                     ("company_id", "=", rec.company_id.id),
+    #                     ("code", "=", rec.code),
+    #                 ],
+    #                 limit=1,
+    #             )
+    #             if other:
+    #                 raise ValidationError(
+    #                     f"Duplicate Header Code in company '{rec.company_id.name}'.\n"
+    #                     f"Your record: Code='{rec.code}', Name='{rec.name}'.\n"
+    #                     f"Existing: Code='{other.code}', Name='{other.name}' (ID {other.id})."
+    #                 )
+    #         # name
+    #         if rec.name:
+    #             other = self.search(
+    #                 [
+    #                     ("id", "!=", rec.id),
+    #                     ("company_id", "=", rec.company_id.id),
+    #                     ("name", "=", rec.name),
+    #                 ],
+    #                 limit=1,
+    #             )
+    #             if other:
+    #                 raise ValidationError(
+    #                     f"Duplicate Header Name in company '{rec.company_id.name}'.\n"
+    #                     f"Your record: Name='{rec.name}', Code='{rec.code}'.\n"
+    #                     f"Existing: Name='{other.name}', Code='{other.code}' (ID {other.id})."
+    #                 )
 
     @api.model
     def get_bs_report_data(self, company_id, report_date):
@@ -305,70 +305,70 @@ class AccountSubHeader(models.Model):
         "idil.chart.account", "subheader_id", string="Accounts"
     )
 
-    _sql_constraints = [
-        (
-            "uniq_subheader_code_company",
-            "unique(company_id, sub_header_code)",
-            "Sub Header Code must be unique per company.",
-        ),
-        (
-            "uniq_subheader_name_company",
-            "unique(company_id, name)",
-            "Sub Header Name must be unique per company.",
-        ),
-    ]
+    # _sql_constraints = [
+    #     (
+    #         "uniq_subheader_code_company",
+    #         "unique(company_id, sub_header_code)",
+    #         "Sub Header Code must be unique per company.",
+    #     ),
+    #     (
+    #         "uniq_subheader_name_company",
+    #         "unique(company_id, name)",
+    #         "Sub Header Name must be unique per company.",
+    #     ),
+    # ]
 
-    @api.constrains("sub_header_code")
-    def _check_subheader_code_length(self):
-        for subheader in self:
-            if len(subheader.sub_header_code) != 6:
-                raise ValidationError("Sub Header Code must be 6 characters long.")
+    # @api.constrains("sub_header_code")
+    # def _check_subheader_code_length(self):
+    #     for subheader in self:
+    #         if len(subheader.sub_header_code) != 6:
+    #             raise ValidationError("Sub Header Code must be 6 characters long.")
 
-    @api.constrains("sub_header_code", "header_id")
-    def _check_subheader_assignment(self):
-        for subheader in self:
-            header_code = subheader.header_id.code[:3]
-            subheader_code = subheader.sub_header_code[:3]
-            if not subheader_code.startswith(header_code):
-                raise ValidationError(
-                    "The first three digits of Sub Header Code must match the Header Code."
-                )
+    # @api.constrains("sub_header_code", "header_id")
+    # def _check_subheader_assignment(self):
+    #     for subheader in self:
+    #         header_code = subheader.header_id.code[:3]
+    #         subheader_code = subheader.sub_header_code[:3]
+    #         if not subheader_code.startswith(header_code):
+    #             raise ValidationError(
+    #                 "The first three digits of Sub Header Code must match the Header Code."
+    #             )
 
-    @api.constrains("sub_header_code", "name", "company_id")
-    def _check_subheader_uniqueness_verbose(self):
-        for rec in self:
-            if not rec.company_id:
-                continue
-            # sub_header_code
-            other = self.search(
-                [
-                    ("id", "!=", rec.id),
-                    ("company_id", "=", rec.company_id.id),
-                    ("sub_header_code", "=", rec.sub_header_code),
-                ],
-                limit=1,
-            )
-            if other:
-                raise ValidationError(
-                    f"Duplicate Sub Header Code in company '{rec.company_id.name}'.\n"
-                    f"Your record: Code='{rec.sub_header_code}', Name='{rec.name}', Header='{rec.header_id.name}'.\n"
-                    f"Existing: Code='{other.sub_header_code}', Name='{other.name}', Header='{other.header_id.name}' (ID {other.id})."
-                )
-            # name
-            other = self.search(
-                [
-                    ("id", "!=", rec.id),
-                    ("company_id", "=", rec.company_id.id),
-                    ("name", "=", rec.name),
-                ],
-                limit=1,
-            )
-            if other:
-                raise ValidationError(
-                    f"Duplicate Sub Header Name in company '{rec.company_id.name}'.\n"
-                    f"Your record: Name='{rec.name}', Code='{rec.sub_header_code}', Header='{rec.header_id.name}'.\n"
-                    f"Existing: Name='{other.name}', Code='{other.sub_header_code}', Header='{other.header_id.name}' (ID {other.id})."
-                )
+    # @api.constrains("sub_header_code", "name", "company_id")
+    # def _check_subheader_uniqueness_verbose(self):
+    #     for rec in self:
+    #         if not rec.company_id:
+    #             continue
+    #         # sub_header_code
+    #         other = self.search(
+    #             [
+    #                 ("id", "!=", rec.id),
+    #                 ("company_id", "=", rec.company_id.id),
+    #                 ("sub_header_code", "=", rec.sub_header_code),
+    #             ],
+    #             limit=1,
+    #         )
+    #         if other:
+    #             raise ValidationError(
+    #                 f"Duplicate Sub Header Code in company '{rec.company_id.name}'.\n"
+    #                 f"Your record: Code='{rec.sub_header_code}', Name='{rec.name}', Header='{rec.header_id.name}'.\n"
+    #                 f"Existing: Code='{other.sub_header_code}', Name='{other.name}', Header='{other.header_id.name}' (ID {other.id})."
+    #             )
+    #         # name
+    #         other = self.search(
+    #             [
+    #                 ("id", "!=", rec.id),
+    #                 ("company_id", "=", rec.company_id.id),
+    #                 ("name", "=", rec.name),
+    #             ],
+    #             limit=1,
+    #         )
+    #         if other:
+    #             raise ValidationError(
+    #                 f"Duplicate Sub Header Name in company '{rec.company_id.name}'.\n"
+    #                 f"Your record: Name='{rec.name}', Code='{rec.sub_header_code}', Header='{rec.header_id.name}'.\n"
+    #                 f"Existing: Name='{other.name}', Code='{other.sub_header_code}', Header='{other.header_id.name}' (ID {other.id})."
+    #             )
 
 
 class Account(models.Model):
