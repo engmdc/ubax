@@ -1,5 +1,5 @@
 <odoo>
-    <data>
+    <data noupdate="1" >
         <!-- Headers -->
         <record id="header_assets" model="idil.chart.account.header">
             <field name="code">100</field>

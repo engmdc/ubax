@@ -457,60 +457,60 @@ class Account(models.Model):
         string="Transaction Booking Lines",
     )
 
-    _sql_constraints = [
-        (
-            "uniq_account_code_company",
-            "unique(company_id, code)",
-            "Account Code must be unique per company.",
-        ),
-        (
-            "uniq_account_name_company",
-            "unique(company_id, name)",
-            "Account Name must be unique per company.",
-        ),
-    ]
+    # _sql_constraints = [
+    #     (
+    #         "uniq_account_code_company",
+    #         "unique(company_id, code)",
+    #         "Account Code must be unique per company.",
+    #     ),
+    #     (
+    #         "uniq_account_name_company",
+    #         "unique(company_id, name)",
+    #         "Account Name must be unique per company.",
+    #     ),
+    # ]
 
-    @api.constrains("code", "name", "company_id")
-    def _check_account_uniqueness_verbose(self):
-        for rec in self:
-            if not rec.company_id:
-                continue
-            # code duplicate?
-            if rec.code:
-                other = self.search(
-                    [
-                        ("id", "!=", rec.id),
-                        ("company_id", "=", rec.company_id.id),
-                        ("code", "=", rec.code),
-                    ],
-                    limit=1,
-                )
-                if other:
-                    raise ValidationError(
-                        f"Duplicate Account Code in company '{rec.company_id.name}'.\n"
-                        f"Your record: Code='{rec.code}', Name='{rec.name}', "
-                        f"Subheader='{rec.subheader_id.name}' ({rec.subheader_id.sub_header_code}).\n"
-                        f"Existing: Code='{other.code}', Name='{other.name}', "
-                        f"Subheader='{other.subheader_id.name}' ({other.subheader_id.sub_header_code}) (ID {other.id})."
-                    )
-            # name duplicate?
-            if rec.name:
-                other = self.search(
-                    [
-                        ("id", "!=", rec.id),
-                        ("company_id", "=", rec.company_id.id),
-                        ("name", "=", rec.name),
-                    ],
-                    limit=1,
-                )
-                if other:
-                    raise ValidationError(
-                        f"Duplicate Account Name in company '{rec.company_id.name}'.\n"
-                        f"Your record: Name='{rec.name}', Code='{rec.code}', "
-                        f"Subheader='{rec.subheader_id.name}' ({rec.subheader_id.sub_header_code}).\n"
-                        f"Existing: Name='{other.name}', Code='{other.code}', "
-                        f"Subheader='{other.subheader_id.name}' ({other.subheader_id.sub_header_code}) (ID {other.id})."
-                    )
+    # @api.constrains("code", "name", "company_id")
+    # def _check_account_uniqueness_verbose(self):
+    #     for rec in self:
+    #         if not rec.company_id:
+    #             continue
+    #         # code duplicate?
+    #         if rec.code:
+    #             other = self.search(
+    #                 [
+    #                     ("id", "!=", rec.id),
+    #                     ("company_id", "=", rec.company_id.id),
+    #                     ("code", "=", rec.code),
+    #                 ],
+    #                 limit=1,
+    #             )
+    #             if other:
+    #                 raise ValidationError(
+    #                     f"Duplicate Account Code in company '{rec.company_id.name}'.\n"
+    #                     f"Your record: Code='{rec.code}', Name='{rec.name}', "
+    #                     f"Subheader='{rec.subheader_id.name}' ({rec.subheader_id.sub_header_code}).\n"
+    #                     f"Existing: Code='{other.code}', Name='{other.name}', "
+    #                     f"Subheader='{other.subheader_id.name}' ({other.subheader_id.sub_header_code}) (ID {other.id})."
+    #                 )
+    #         # name duplicate?
+    #         if rec.name:
+    #             other = self.search(
+    #                 [
+    #                     ("id", "!=", rec.id),
+    #                     ("company_id", "=", rec.company_id.id),
+    #                     ("name", "=", rec.name),
+    #                 ],
+    #                 limit=1,
+    #             )
+    #             if other:
+    #                 raise ValidationError(
+    #                     f"Duplicate Account Name in company '{rec.company_id.name}'.\n"
+    #                     f"Your record: Name='{rec.name}', Code='{rec.code}', "
+    #                     f"Subheader='{rec.subheader_id.name}' ({rec.subheader_id.sub_header_code}).\n"
+    #                     f"Existing: Name='{other.name}', Code='{other.code}', "
+    #                     f"Subheader='{other.subheader_id.name}' ({other.subheader_id.sub_header_code}) (ID {other.id})."
+    #                 )
 
     @api.depends(
         "transaction_bookingline_ids.dr_amount", "transaction_bookingline_ids.cr_amount"
