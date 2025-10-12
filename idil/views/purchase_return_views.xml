@@ -30,6 +30,9 @@
 
 
                         <field name="return_date"/>
+                         <field name="currency_id"/>
+                          <field name="rate"/>
+                         
                          
                     </group>
 
