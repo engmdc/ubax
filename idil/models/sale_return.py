@@ -104,6 +104,8 @@ class SaleReturn(models.Model):
                 else fields.Date.today()
             )
 
+            # Get latest rate on or before the doc_date, preferring the order's company, then global (company_id False)
+
             rate_rec = Rate.search(
                 [
                     ("currency_id", "=", order.currency_id.id),

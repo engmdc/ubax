@@ -159,7 +159,7 @@ class ProductPurchaseReturn(models.Model):
                         "trx_source_id": trx_source.id,
                         "product_purchase_order_id": self.original_order_id.id,
                         "trx_date": fields.Date.today(),
-                        "rate": self.rate,
+                        "rate": self.rate,  # Add the exchange rate
                         "amount": amount,
                         "remaining_amount": 0,
                         "amount_paid": 0,
