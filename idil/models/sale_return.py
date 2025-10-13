@@ -14,6 +14,10 @@ class SaleReturn(models.Model):
     _inherit = ["mail.thread", "mail.activity.mixin"]
     _order = "id desc"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
+
     name = fields.Char(
         string="Reference", default="New", readonly=True, copy=False, tracking=True
     )
@@ -86,6 +90,32 @@ class SaleReturn(models.Model):
         tracking=True,
     )
 
+    @api.depends("currency_id", "return_date", "company_id")
+    def _compute_exchange_rate(self):
+        Rate = self.env["res.currency.rate"].sudo()
+        for order in self:
+            order.rate = 0.0
+            if not order.currency_id:
+                continue
+
+            doc_date = (
+                fields.Date.to_date(order.return_date)
+                if order.return_date
+                else fields.Date.today()
+            )
+
+            rate_rec = Rate.search(
+                [
+                    ("currency_id", "=", order.currency_id.id),
+                    ("name", "<=", doc_date),
+                    ("company_id", "in", [order.company_id.id, False]),
+                ],
+                order="company_id desc, name desc",
+                limit=1,
+            )
+
+            order.rate = rate_rec.rate or 0.0
+
     @api.depends(
         "return_lines.returned_quantity",
         "return_lines.price_unit",
@@ -142,22 +172,6 @@ class SaleReturn(models.Model):
             rec.total_subtotal = total_subtotal
             rec.total_discount_amount = total_discount
             rec.total_commission_amount = total_commission
-
-    @api.depends("currency_id")
-    def _compute_exchange_rate(self):
-        for order in self:
-            if order.currency_id:
-                rate = self.env["res.currency.rate"].search(
-                    [
-                        ("currency_id", "=", order.currency_id.id),
-                        ("name", "=", fields.Date.today()),
-                        ("company_id", "=", self.env.company.id),
-                    ],
-                    limit=1,
-                )
-                order.rate = rate.rate if rate else 0.0
-            else:
-                order.rate = 0.0
 
     @api.onchange("sale_order_id")
     def _onchange_sale_order_id(self):
@@ -278,6 +292,7 @@ class SaleReturn(models.Model):
                     "sale_order_id": return_order.sale_order_id.id,
                     "trx_source_id": trx_source.id,
                     "Sales_order_number": return_order.sale_order_id.id,
+                    "rate": self.rate,
                     "payment_method": "bank_transfer",
                     "payment_status": "pending",
                     "trx_date": fields.Date.context_today(self),
