@@ -168,6 +168,7 @@ class StockAdjustment(models.Model):
                     {
                         "reffno": "Stock Adjustments%s" % adjustment.id,
                         "trx_date": adjustment.adjustment_date,
+                        "rate": adjustment.rate,
                         "amount": abs(
                             adjustment.adjustment_qty * adjustment.cost_price
                         ),
