@@ -13,6 +13,9 @@ class CustomerSaleReturn(models.Model):
     _description = "Customer Sale Return"
     _order = "id desc"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
     name = fields.Char(string="Return Reference", default="New", readonly=True)
     customer_id = fields.Many2one(
         "idil.customer.registration", string="Customer", required=True
