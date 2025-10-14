@@ -43,6 +43,7 @@
                         
 
                         <group string="Item Details" colspan="2">
+                            
                             <field name="name"/>
                             <field name="item_id"/>
                             <field name="cost_price" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
@@ -52,6 +53,8 @@
 
                         <group string="Adjustment Info" colspan="2">
                             <field name="adjustment_date"/>
+                            <field name="currency_id"/>
+                            <field name="rate"/>
                             <field name="total_amount" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                             <field name="reason_id"/>
                         </group>

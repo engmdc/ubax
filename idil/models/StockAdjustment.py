@@ -11,6 +11,9 @@ class StockAdjustment(models.Model):
     _description = "Stock Adjustment"
     _order = "id desc"
 
+    company_id = fields.Many2one(
+        "res.company", default=lambda s: s.env.company, required=True
+    )
     name = fields.Char(
         string="Reference",
         required=True,
@@ -66,6 +69,52 @@ class StockAdjustment(models.Model):
         help="Total value of the stock adjustment (qty × cost price)",
         tracking=True,
     )
+    # Currency fields
+    currency_id = fields.Many2one(
+        "res.currency",
+        string="Currency",
+        required=True,
+        default=lambda self: self.env["res.currency"].search(
+            [("name", "=", "SL")], limit=1
+        ),
+        readonly=True,
+        tracking=True,
+    )
+    rate = fields.Float(
+        string="Exchange Rate",
+        compute="_compute_exchange_rate",
+        store=True,
+        readonly=True,
+        tracking=True,
+    )
+
+    @api.depends("currency_id", "adjustment_date", "company_id")
+    def _compute_exchange_rate(self):
+        Rate = self.env["res.currency.rate"].sudo()
+        for order in self:
+            order.rate = 0.0
+            if not order.currency_id:
+                continue
+
+            doc_date = (
+                fields.Date.to_date(order.adjustment_date)
+                if order.adjustment_date
+                else fields.Date.today()
+            )
+
+            # Get latest rate on or before the doc_date, preferring the order's company, then global (company_id False)
+
+            rate_rec = Rate.search(
+                [
+                    ("currency_id", "=", order.currency_id.id),
+                    ("name", "<=", doc_date),
+                    ("company_id", "in", [order.company_id.id, False]),
+                ],
+                order="company_id desc, name desc",
+                limit=1,
+            )
+
+            order.rate = rate_rec.rate or 0.0
 
     def _generate_stock_adjustment_reference(self, item):
         item_code = (
