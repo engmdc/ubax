@@ -1,7 +1,7 @@
 {
-    "name": "Ubaxey",
+    "name": "MSLTS",
     "version": "1.0.0",
-    "category": "Ubaxey",
+    "category": "MSLTS",
     "license": "LGPL-3",
     "summary": "Ubax Management System",
     "description": "Mohamed",
