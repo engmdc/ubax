@@ -1,9 +1,9 @@
 {
-    "name": "ubax",
+    "name": "UbaxBakery",
     "version": "1.0.0",
-    "category": "ubax",
+    "category": "Ubax Bakery",
     "license": "LGPL-3",
-    "summary": "ubax Management System",
+    "summary": "Ubax Management System",
     "description": "Mohamed",
     "depends": ["mail", "point_of_sale", "web"],
     "application": True,
