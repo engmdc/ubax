@@ -1,7 +1,7 @@
 {
-    "name": "Ubax",
+    "name": "Ubaxey",
     "version": "1.0.0",
-    "category": "Ubax",
+    "category": "Ubaxey",
     "license": "LGPL-3",
     "summary": "Ubax Management System",
     "description": "Mohamed",
