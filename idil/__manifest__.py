@@ -1,7 +1,7 @@
 {
-    "name": "MSLTS",
+    "name": "UBAX",
     "version": "1.0.0",
-    "category": "MSLTS",
+    "category": "UBAX",
     "license": "LGPL-3",
     "summary": "Ubax Management System",
     "description": "Mohamed",
